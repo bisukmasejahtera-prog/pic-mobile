@@ -46,6 +46,7 @@ const quickReturReasons = [
 interface ReceivingScreenProps {
   currentDapur: Dapur;
   selectedDate?: string;
+  picName?: string;
   vendors: Vendor[];
   availableKomoditas: Komoditas[];
   penerimaanItems: PenerimaanBahanItem[];
@@ -56,6 +57,7 @@ interface ReceivingScreenProps {
 
 export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
   currentDapur,
+  picName = 'Petugas PIC',
   vendors,
   availableKomoditas,
   penerimaanItems,
@@ -197,7 +199,7 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
       suhu_celsius: suhu,
       foto_urls: photos,
       catatan: catatan.trim() || undefined,
-      pic_nama: 'Budi Santoso, S.P',
+      pic_nama: picName,
       created_at: new Date().toISOString()
     };
 

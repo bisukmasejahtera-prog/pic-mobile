@@ -39,8 +39,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   // Login form state
-  const [email, setEmail] = useState('budi.santoso@bisukma.org');
-  const [password, setPassword] = useState('********');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -77,54 +77,59 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       const q = query(usersRef, where('email', '==', emailTrim));
       const snap = await getDocs(q);
 
-      if (!snap.empty) {
-        const uDoc = snap.docs[0].data();
-
-        // Password check (if recorded)
-        if (uDoc.password && uDoc.password !== password) {
-          setErrorMsg('Kata sandi salah. Silakan periksa kembali.');
-          setIsLoading(false);
-          return;
-        }
-
-        // Pending Maker approval status
-        if (uDoc.approval_status === 'pending') {
-          setPendingData({
-            name: uDoc.nama_lengkap || emailTrim,
-            email: uDoc.email || emailTrim,
-            phone: uDoc.nomor_hp || ''
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        // Rejected
-        if (uDoc.approval_status === 'rejected') {
-          setErrorMsg('Pendaftaran akun Anda ditolak oleh Tim Maker Operasional Bisukma Group.');
-          setIsLoading(false);
-          return;
-        }
-
-        // Approved!
+      if (snap.empty) {
+        setErrorMsg('Email belum terdaftar. Silakan lakukan pendaftaran pada tab "Daftar PIC Baru".');
         setIsLoading(false);
-        onLoginSuccess({
-          name: uDoc.nama_lengkap || 'Petugas PIC Dapur',
-          email: uDoc.email || emailTrim
-        });
         return;
       }
-    } catch (dbErr) {
-      console.warn('Firestore user query fallback to local check:', dbErr);
-    }
 
-    // Fallback default demo check
-    setTimeout(() => {
+      const uDoc = snap.docs[0].data();
+
+      // Password check
+      if (uDoc.password && uDoc.password !== password) {
+        setErrorMsg('Kata sandi salah. Silakan periksa kembali.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Pending Maker approval status
+      if (uDoc.approval_status === 'pending') {
+        setPendingData({
+          name: uDoc.nama_lengkap || emailTrim,
+          email: uDoc.email || emailTrim,
+          phone: uDoc.nomor_hp || ''
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Rejected
+      if (uDoc.approval_status === 'rejected') {
+        setErrorMsg('Pendaftaran akun Anda ditolak oleh Tim Maker Operasional Bisukma Group.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Inactive
+      if (uDoc.is_active === false) {
+        setErrorMsg('Akun sedang dinonaktifkan. Hubungi Tim Maker Operasional Bisukma Group.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Approved!
       setIsLoading(false);
       onLoginSuccess({
-        name: 'Budi Santoso, S.P',
-        email: email.trim()
+        name: uDoc.nama_lengkap || 'Petugas PIC Dapur',
+        email: uDoc.email || emailTrim
       });
-    }, 600);
+      return;
+    } catch (dbErr: any) {
+      console.error('Firestore user query error:', dbErr);
+      setErrorMsg('Gagal memverifikasi akun ke server. Pastikan perangkat terhubung ke internet.');
+      setIsLoading(false);
+      return;
+    }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
@@ -313,27 +318,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-2 pt-1">
-                {/* Instant Simulation for Testing / Demo */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onLoginSuccess({
-                      name: pendingData.name,
-                      email: pendingData.email
-                    });
-                  }}
-                  className="w-full py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Simulasi: Approve Akun & Masuk Sekarang</span>
-                </button>
-
+              <div className="pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     setPendingData(null);
                     setAuthMode('login');
+                    setEmail('');
+                    setPassword('');
                   }}
                   className="w-full py-2.5 px-3 rounded-xl border border-gray-300 hover:bg-gray-50 text-xs font-bold text-gray-700 transition-colors cursor-pointer"
                 >
@@ -442,18 +434,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 </button>
 
               </form>
-
-              {/* Quick Demo Access Button */}
-              <div className="pt-2 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={handleQuickDemoLogin}
-                  className="w-full py-2.5 px-3 rounded-xl border border-dashed border-gray-300 hover:border-gray-400 text-xs font-bold text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px]"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Masuk Cepat (Akun Demo Budi Santoso)</span>
-                </button>
-              </div>
             </>
           ) : (
             

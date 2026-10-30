@@ -211,6 +211,7 @@ export const App: React.FC = () => {
           {activeTab === 'penerimaan' && (
             <ReceivingScreen
               currentDapur={currentDapur}
+              picName={currentUser.name}
               selectedDate={selectedDate}
               vendors={MOCK_VENDORS}
               availableKomoditas={MOCK_KOMODITAS}
