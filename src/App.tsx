@@ -12,7 +12,8 @@ import { LoginScreen } from './components/screens/LoginScreen';
 import { BahanDetailModal } from './components/modules/BahanDetailModal';
 import { CheckCircle2 } from 'lucide-react';
 import { getTodayDateStr, getDateStatusLabel } from './utils/dateUtils';
-import { saveDocument, deleteDocument, getCollectionDocs } from './lib/firebase';
+import { db, saveDocument, deleteDocument, getCollectionDocs } from './lib/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const STORAGE_KEY_ITEMS = 'pic_mobile_bahan_items_v1';
 const STORAGE_KEY_DAPUR = 'pic_mobile_dapur_v1';
@@ -102,32 +103,26 @@ export const App: React.FC = () => {
       .then((docs) => {
         if (!isMounted) return;
         if (Array.isArray(docs)) {
-          // Check if localStorage has unsynced items
-          let localItems: PenerimaanBahanItem[] = [];
-          try {
-            const saved = localStorage.getItem(STORAGE_KEY_ITEMS);
-            if (saved) localItems = JSON.parse(saved);
-          } catch {
-            // ignore
-          }
+          // Filter out any legacy dummy mock items
+          const realItems = (docs as PenerimaanBahanItem[]).filter(item => 
+            item && 
+            !item.id?.startsWith('dummy-') && 
+            item.id !== 'RCV-ITM-01' && 
+            item.id !== 'RCV-ITM-02'
+          );
 
-          const firestoreMap = new Map((docs as PenerimaanBahanItem[]).map(d => [d.id, d]));
-
-          // If local items exist that are not yet in Firestore, sync them to Firestore!
-          for (const item of localItems) {
-            if (!firestoreMap.has(item.id)) {
-              saveDocument('penerimaan_bahan', item.id, item).catch(() => {});
-              firestoreMap.set(item.id, item);
-            }
-          }
-
-          const combined = Array.from(firestoreMap.values()).sort((a, b) => {
+          realItems.sort((a, b) => {
             const timeA = new Date(a.created_at || a.tanggal).getTime();
             const timeB = new Date(b.created_at || b.tanggal).getTime();
             return timeB - timeA;
           });
 
-          setPenerimaanItems(combined);
+          setPenerimaanItems(realItems);
+          try {
+            localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(realItems));
+          } catch {
+            // ignore
+          }
         }
       })
       .catch((err) => {
@@ -148,10 +143,10 @@ export const App: React.FC = () => {
         if (Array.isArray(docs) && docs.length > 0) {
           const mapped: Dapur[] = docs.map((d: any) => ({
             id: d.id,
-            nama: d.nama || d.name || 'Dapur SPPG',
-            kode_bgn: d.kode_bgn || d.kode || `SPPG-${String(d.id || '').slice(-3).toUpperCase()}`,
-            alamat: d.alamat || d.address || 'Alamat Unit Dapur',
-            is_ud_yayasan_hub: d.is_ud_yayasan_hub ?? (d.tipe === 'yayasan_hub' || d.id === 'd-1'),
+            nama: d.nama_dapur || d.nama || d.name || 'Dapur SPPG',
+            kode_bgn: d.kode_bgn || d.kode || d.bgn_id || `SPPG-${String(d.id || '').slice(-4).toUpperCase()}`,
+            alamat: d.alamat || d.address || 'Unit Dapur Yayasan Bisukma',
+            is_ud_yayasan_hub: d.is_ud_yayasan_hub ?? false,
             vendor_default_id: d.vendor_default_id || 'vnd-ud-bisukma'
           }));
 
@@ -181,6 +176,50 @@ export const App: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  // Strictly bind currentDapur to currentUser's authoritative assigned kitchen in Firestore
+  useEffect(() => {
+    if (!currentUser?.email) return;
+
+    let isMounted = true;
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('email', '==', currentUser.email.toLowerCase().trim()));
+
+    getDocs(q).then((snap) => {
+      if (!isMounted || snap.empty) return;
+      const uDoc = snap.docs[0].data();
+      const targetDapurId = uDoc.dapur_id || (uDoc.assigned_dapurs && uDoc.assigned_dapurs[0]);
+      if (targetDapurId) {
+        // Try matching in allDapurs first
+        const match = allDapurs.find(d => d.id === targetDapurId);
+        if (match) {
+          setCurrentDapur(match);
+        } else {
+          // Fetch exact dapur document from Firestore
+          const dRef = collection(db, 'dapurs');
+          getDocs(query(dRef, where('id', '==', targetDapurId))).then(dSnap => {
+            if (!isMounted || dSnap.empty) return;
+            const dData = dSnap.docs[0].data();
+            const resolvedDapur: Dapur = {
+              id: dData.id,
+              nama: dData.nama_dapur || dData.nama || 'Dapur SPPG',
+              kode_bgn: dData.kode_bgn || dData.kode || dData.bgn_id || 'SPPG-DAPUR',
+              alamat: dData.alamat || 'Unit Dapur Yayasan Bisukma',
+              is_ud_yayasan_hub: false,
+              vendor_default_id: 'vnd-ud-bisukma'
+            };
+            setCurrentDapur(resolvedDapur);
+          }).catch(() => {});
+        }
+      }
+    }).catch(err => {
+      console.warn('Strict dapur auto-bind error:', err);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, allDapurs]);
 
   // Sync state to localStorage
   useEffect(() => {
@@ -288,7 +327,6 @@ export const App: React.FC = () => {
     return (
       <LoginScreen
         currentDapur={currentDapur}
-        allDapurs={allDapurs}
         onLoginSuccess={handleLoginSuccess}
       />
     );
@@ -368,11 +406,6 @@ export const App: React.FC = () => {
           {activeTab === 'akun' && (
             <ProfileScreen
               currentDapur={currentDapur}
-              allDapurs={allDapurs}
-              onSelectDapur={(d) => {
-                setCurrentDapur(d);
-                showToast(`Unit dapur aktif diubah ke ${d.nama}`);
-              }}
               picName={currentUser.name}
               onLogout={handleLogout}
             />
