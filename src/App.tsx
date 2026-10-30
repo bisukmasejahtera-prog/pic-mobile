@@ -6,14 +6,13 @@ import { BottomNavBar } from './components/layout/BottomNavBar';
 import { DesktopSidebar } from './components/layout/DesktopSidebar';
 import { HomeScreen } from './components/screens/HomeScreen';
 import { ReceivingScreen } from './components/screens/ReceivingScreen';
-import { QualityScreen } from './components/screens/QualityScreen';
 import { HistoryScreen } from './components/screens/HistoryScreen';
 import { ProfileScreen } from './components/screens/ProfileScreen';
 import { LoginScreen } from './components/screens/LoginScreen';
 import { BahanDetailModal } from './components/modules/BahanDetailModal';
 import { CheckCircle2 } from 'lucide-react';
 import { getTodayDateStr, getDateStatusLabel } from './utils/dateUtils';
-import { saveDocument, deleteDocument } from './lib/firebase';
+import { saveDocument, deleteDocument, getCollectionDocs } from './lib/firebase';
 
 const STORAGE_KEY_ITEMS = 'pic_mobile_bahan_items_v1';
 const STORAGE_KEY_DAPUR = 'pic_mobile_dapur_v1';
@@ -77,6 +76,30 @@ export const App: React.FC = () => {
 
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<PenerimaanBahanItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Sync live data from Firestore collection 'penerimaan_bahan' on mount
+  useEffect(() => {
+    let isMounted = true;
+    getCollectionDocs('penerimaan_bahan')
+      .then((docs) => {
+        if (!isMounted) return;
+        if (Array.isArray(docs)) {
+          const sorted = (docs as PenerimaanBahanItem[]).sort((a, b) => {
+            const timeA = new Date(a.created_at || a.tanggal).getTime();
+            const timeB = new Date(b.created_at || b.tanggal).getTime();
+            return timeB - timeA;
+          });
+          setPenerimaanItems(sorted);
+        }
+      })
+      .catch((err) => {
+        console.warn('Sync Firestore on load fallback:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Sync state to localStorage
   useEffect(() => {
@@ -222,14 +245,7 @@ export const App: React.FC = () => {
             />
           )}
 
-          {activeTab === 'cek_mutu' && (
-            <QualityScreen
-              penerimaanItems={penerimaanItems}
-              onOpenItemDetail={setSelectedItemForDetail}
-            />
-          )}
-
-          {activeTab === 'riwayat' && (
+          {(activeTab === 'riwayat' || activeTab === 'cek_mutu') && (
             <HistoryScreen
               penerimaanItems={penerimaanItems}
               selectedDate={selectedDate}

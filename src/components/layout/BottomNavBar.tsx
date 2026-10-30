@@ -16,17 +16,16 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   const tabs = [
     { id: 'beranda' as TabType, label: 'Beranda', icon: LayoutDashboard },
     { id: 'penerimaan' as TabType, label: 'Penerimaan', icon: Truck, badge: pendingReceivingCount },
-    { id: 'cek_mutu' as TabType, label: 'Cek Mutu', icon: ClipboardCheck },
-    { id: 'riwayat' as TabType, label: 'Riwayat', icon: History },
+    { id: 'riwayat' as TabType, label: 'Riwayat & Mutu', icon: ClipboardCheck },
     { id: 'akun' as TabType, label: 'Akun', icon: User }
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] h-16 bottom-nav-shadow lg:hidden">
-      <div className="max-w-md mx-auto h-full grid grid-cols-5 px-1">
+      <div className="max-w-md mx-auto h-full grid grid-cols-4 px-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+          const isActive = activeTab === tab.id || (tab.id === 'riwayat' && activeTab === 'cek_mutu');
 
           return (
             <button

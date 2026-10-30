@@ -174,58 +174,80 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </button>
         </div>
 
-        {/* List of Items */}
-        <div className="divide-y divide-gray-100">
-          {penerimaanItems.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => onOpenItemDetail && onOpenItemDetail(item)}
-              className="py-3 sm:py-3.5 flex items-center justify-between gap-3 hover:bg-gray-50/80 -mx-2 px-2 rounded-xl transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  item.ada_retur ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
-                }`}>
-                  <Scale className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs sm:text-sm font-bold text-[#111827] truncate">
-                      {item.nama_bahan_baku}
-                    </span>
-                    {item.ada_retur ? (
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-red-100 text-red-800 border border-red-200">
-                        RETUR: {item.jumlah_retur} {item.satuan}
-                      </span>
-                    ) : (
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#ECFDF5] text-[#047857]">
-                        DITERIMA
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-[#6B7280] truncate mt-0.5">
-                    Supplier: <strong className="text-gray-900">{item.nama_supplier}</strong>
-                    {item.ada_retur && item.jam_sampai_retur && (
-                      <span className="text-red-700 font-semibold ml-1">
-                        • Ganti tiba: {item.jam_sampai_retur} WIB
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-right shrink-0">
-                <div className="text-xs sm:text-sm font-black text-[#111827]">
-                  {item.jumlah_sampai} {item.satuan}
-                </div>
-                <div className="text-[10px] text-gray-500 flex items-center justify-end gap-1 mt-0.5">
-                  <Clock className="w-3 h-3" />
-                  {item.jam_sampai} WIB
-                </div>
-              </div>
+        {/* List of Items or Empty State */}
+        {penerimaanItems.length === 0 ? (
+          <div className="py-8 px-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-400 mx-auto flex items-center justify-center mb-3">
+              <Scale className="w-6 h-6" />
             </div>
-          ))}
-        </div>
+            <h4 className="text-sm font-bold text-gray-900">
+              Belum Ada Laporan Bahan Baku Masuk
+            </h4>
+            <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+              Bahan baku yang tiba dari suplier dan ditimbang oleh petugas PIC akan tercatat di sini secara real-time.
+            </p>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('penerimaan')}
+              className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#111827] text-white text-xs font-bold hover:bg-gray-800 transition-all cursor-pointer min-h-[44px]"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Input Bahan Sekarang</span>
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {penerimaanItems.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => onOpenItemDetail && onOpenItemDetail(item)}
+                className="py-3 sm:py-3.5 flex items-center justify-between gap-3 hover:bg-gray-50/80 -mx-2 px-2 rounded-xl transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    item.ada_retur ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    <Scale className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm font-bold text-[#111827] truncate">
+                        {item.nama_bahan_baku}
+                      </span>
+                      {item.ada_retur ? (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-red-100 text-red-800 border border-red-200">
+                          RETUR: {item.jumlah_retur} {item.satuan}
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#ECFDF5] text-[#047857]">
+                          DITERIMA
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-[#6B7280] truncate mt-0.5">
+                      Supplier: <strong className="text-gray-900">{item.nama_supplier}</strong>
+                      {item.ada_retur && item.jam_sampai_retur && (
+                        <span className="text-red-700 font-semibold ml-1">
+                          • Ganti tiba: {item.jam_sampai_retur} WIB
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <div className="text-xs sm:text-sm font-black text-[#111827]">
+                    {item.jumlah_sampai} {item.satuan}
+                  </div>
+                  <div className="text-[10px] text-gray-500 flex items-center justify-end gap-1 mt-0.5">
+                    <Clock className="w-3 h-3" />
+                    {item.jam_sampai} WIB
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
       </div>
 

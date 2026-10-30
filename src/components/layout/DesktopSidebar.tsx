@@ -22,10 +22,9 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
 }) => {
   const dateStatus = selectedDate ? getDateStatusLabel(selectedDate) : null;
   const menuItems = [
-    { id: 'beranda' as TabType, label: 'Beranda Ops', icon: LayoutDashboard, desc: 'Ringkasan & antrean truk' },
+    { id: 'beranda' as TabType, label: 'Beranda Ops', icon: LayoutDashboard, desc: 'Ringkasan & status harian' },
     { id: 'penerimaan' as TabType, label: 'Penerimaan Bahan', icon: Truck, desc: 'Timbangan & Surat Jalan' },
-    { id: 'cek_mutu' as TabType, label: 'Cek Mutu & QC', icon: ClipboardCheck, desc: 'Rantai dingin & retur' },
-    { id: 'riwayat' as TabType, label: 'Riwayat Logistik', icon: History, desc: 'Arsip nota & laporan' },
+    { id: 'riwayat' as TabType, label: 'Riwayat & Mutu', icon: ClipboardCheck, desc: 'Arsip nota, QC & retur' },
     { id: 'akun' as TabType, label: 'Akun & Sistem', icon: User, desc: 'Pengaturan & profil PIC' }
   ];
 
@@ -102,7 +101,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         </div>
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isActive = activeTab === item.id || (item.id === 'riwayat' && activeTab === 'cek_mutu');
 
           return (
             <button

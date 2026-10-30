@@ -48,12 +48,12 @@ export async function navigateToTab(page: Page, tab: TabTarget) {
   const isMobile = await mobileNav.isVisible();
 
   if (isMobile) {
-    const mobileLabels: Record<TabTarget, string> = {
-      beranda: 'Beranda',
-      penerimaan: 'Penerimaan',
-      cek_mutu: 'Cek Mutu',
-      riwayat: 'Riwayat',
-      akun: 'Akun'
+    const mobileLabels: Record<TabTarget, RegExp> = {
+      beranda: /Beranda/i,
+      penerimaan: /Penerimaan/i,
+      cek_mutu: /Riwayat & Mutu|Cek Mutu/i,
+      riwayat: /Riwayat & Mutu|Riwayat/i,
+      akun: /Akun/i
     };
     await mobileNav.getByRole('button', { name: mobileLabels[tab] }).click();
   } else {
@@ -61,8 +61,8 @@ export async function navigateToTab(page: Page, tab: TabTarget) {
     const desktopLabels: Record<TabTarget, RegExp> = {
       beranda: /Beranda Ops/i,
       penerimaan: /Penerimaan Bahan/i,
-      cek_mutu: /Cek Mutu/i,
-      riwayat: /Riwayat/i,
+      cek_mutu: /Riwayat & Mutu|Cek Mutu/i,
+      riwayat: /Riwayat & Mutu|Riwayat/i,
       akun: /Akun/i
     };
     await desktopAside.getByRole('button', { name: desktopLabels[tab] }).first().click();

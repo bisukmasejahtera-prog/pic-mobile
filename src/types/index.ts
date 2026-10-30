@@ -1,4 +1,4 @@
-export type TabType = 'beranda' | 'penerimaan' | 'cek_mutu' | 'riwayat' | 'akun';
+export type TabType = 'beranda' | 'penerimaan' | 'riwayat' | 'akun' | 'cek_mutu';
 
 export interface Dapur {
   id: string;
