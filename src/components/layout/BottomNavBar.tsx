@@ -1,28 +1,31 @@
 import React from 'react';
-import { LayoutDashboard, Truck, ClipboardCheck, History, User } from 'lucide-react';
+import { LayoutDashboard, Truck, ClipboardCheck, AlertTriangle, User } from 'lucide-react';
 import { TabType } from '../../types';
 
 interface BottomNavBarProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
   pendingReceivingCount?: number;
+  pendingLaporanCount?: number;
 }
 
 export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   activeTab,
   onTabChange,
-  pendingReceivingCount = 1
+  pendingReceivingCount = 0,
+  pendingLaporanCount = 0
 }) => {
   const tabs = [
     { id: 'beranda' as TabType, label: 'Beranda', icon: LayoutDashboard },
     { id: 'penerimaan' as TabType, label: 'Penerimaan', icon: Truck, badge: pendingReceivingCount },
-    { id: 'riwayat' as TabType, label: 'Riwayat & Mutu', icon: ClipboardCheck },
+    { id: 'riwayat' as TabType, label: 'Riwayat', icon: ClipboardCheck },
+    { id: 'laporan_dapur' as TabType, label: 'Laporan', icon: AlertTriangle, badge: pendingLaporanCount },
     { id: 'akun' as TabType, label: 'Akun', icon: User }
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] h-16 bottom-nav-shadow lg:hidden">
-      <div className="max-w-md mx-auto h-full grid grid-cols-4 px-1">
+      <div className="max-w-md mx-auto h-full grid grid-cols-5 px-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id || (tab.id === 'riwayat' && activeTab === 'cek_mutu');
@@ -39,12 +42,12 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
               <div className="relative">
                 <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-[#111827]' : 'text-[#6B7280]'}`} />
                 {Boolean(tab.badge && tab.badge > 0) && (
-                  <span className="absolute -top-1.5 -right-2 bg-emerald-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                  <span className="absolute -top-1.5 -right-2 bg-amber-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
                     {tab.badge}
                   </span>
                 )}
               </div>
-              <span className={`text-[11px] leading-none ${isActive ? 'text-[#111827] font-bold' : 'text-[#6B7280]'}`}>
+              <span className={`text-[10px] sm:text-[11px] leading-none truncate max-w-[60px] text-center ${isActive ? 'text-[#111827] font-bold' : 'text-[#6B7280]'}`}>
                 {tab.label}
               </span>
               {isActive && (

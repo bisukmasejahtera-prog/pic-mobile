@@ -1,4 +1,36 @@
-export type TabType = 'beranda' | 'penerimaan' | 'riwayat' | 'akun' | 'cek_mutu';
+export type TabType = 'beranda' | 'penerimaan' | 'riwayat' | 'laporan_dapur' | 'akun' | 'cek_mutu';
+
+export type KategoriKendala = 
+  | 'bahan_luar_rab' 
+  | 'jadwal_waktu' 
+  | 'kerusakan_alat' 
+  | 'fasilitas_kurang' 
+  | 'lainnya';
+
+export type TingkatUrgensi = 'rendah' | 'sedang' | 'darurat';
+
+export type StatusKendala = 'pending' | 'diproses' | 'selesai' | 'ditolak';
+
+export interface LaporanKendalaDapur {
+  id: string;
+  dapur_id: string;
+  dapur_nama: string;
+  pic_nama: string;
+  pic_email?: string;
+  kategori: KategoriKendala;
+  tingkat_urgensi: TingkatUrgensi;
+  judul: string;
+  deskripsi: string;
+  tindakan_sementara?: string;
+  estimasi_biaya?: number;
+  foto_urls: string[];
+  status: StatusKendala;
+  tanggapan_maker?: string;
+  ditindaklanjuti_oleh?: string;
+  ditindaklanjuti_pada?: string;
+  created_at: string;
+  updated_at?: string;
+}
 
 export interface Dapur {
   id: string;

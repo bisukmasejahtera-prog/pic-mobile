@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TabType, Dapur, PenerimaanBahanItem } from './types';
+import { TabType, Dapur, PenerimaanBahanItem, LaporanKendalaDapur } from './types';
 import { MOCK_DAPURS, MOCK_VENDORS, MOCK_KOMODITAS, INITIAL_PENERIMAAN_BAHAN } from './data/mockData';
 import { HeaderAppBar } from './components/layout/HeaderAppBar';
 import { BottomNavBar } from './components/layout/BottomNavBar';
@@ -7,6 +7,7 @@ import { DesktopSidebar } from './components/layout/DesktopSidebar';
 import { HomeScreen } from './components/screens/HomeScreen';
 import { ReceivingScreen } from './components/screens/ReceivingScreen';
 import { HistoryScreen } from './components/screens/HistoryScreen';
+import { KitchenDiscrepancyScreen } from './components/screens/KitchenDiscrepancyScreen';
 import { ProfileScreen } from './components/screens/ProfileScreen';
 import { LoginScreen } from './components/screens/LoginScreen';
 import { BahanDetailModal } from './components/modules/BahanDetailModal';
@@ -20,6 +21,7 @@ const STORAGE_KEY_DAPUR = 'pic_mobile_dapur_v1';
 const STORAGE_KEY_AUTH = 'pic_mobile_auth_v1';
 const STORAGE_KEY_DATE = 'pic_mobile_selected_date_v1';
 const STORAGE_KEY_ALL_DAPURS = 'pic_mobile_all_dapurs_v1';
+const STORAGE_KEY_LAPORAN = 'pic_mobile_laporan_dapur_v1';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('beranda');
@@ -93,6 +95,17 @@ export const App: React.FC = () => {
     return INITIAL_PENERIMAAN_BAHAN;
   });
 
+  // Laporan Kendala Dapur Items State with persistence
+  const [laporanItems, setLaporanItems] = useState<LaporanKendalaDapur[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_LAPORAN);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<PenerimaanBahanItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -127,6 +140,33 @@ export const App: React.FC = () => {
       })
       .catch((err) => {
         console.warn('Sync Firestore on load fallback:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Sync live data from Firestore collection 'laporan_kendala_dapur' on mount
+  useEffect(() => {
+    let isMounted = true;
+    getCollectionDocs('laporan_kendala_dapur')
+      .then((docs) => {
+        if (!isMounted) return;
+        if (Array.isArray(docs)) {
+          const list = (docs as LaporanKendalaDapur[]).sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          setLaporanItems(list);
+          try {
+            localStorage.setItem(STORAGE_KEY_LAPORAN, JSON.stringify(list));
+          } catch {
+            // ignore
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('Sync Firestore laporan_kendala_dapur fallback:', err);
       });
 
     return () => {
@@ -322,6 +362,18 @@ export const App: React.FC = () => {
     });
   };
 
+  const handleSaveLaporan = async (newLaporan: LaporanKendalaDapur) => {
+    setLaporanItems(prev => [newLaporan, ...prev]);
+    showToast(`Laporan "${newLaporan.judul}" berhasil dikirim ke Maker!`);
+
+    // Sync to Firestore collection 'laporan_kendala_dapur'
+    try {
+      await saveDocument('laporan_kendala_dapur', newLaporan.id, newLaporan);
+    } catch (err) {
+      console.warn('Sync Firestore laporan_kendala_dapur fallback:', err);
+    }
+  };
+
   // If not logged in, render dedicated LoginScreen
   if (!currentUser) {
     return (
@@ -403,6 +455,15 @@ export const App: React.FC = () => {
             />
           )}
 
+          {activeTab === 'laporan_dapur' && (
+            <KitchenDiscrepancyScreen
+              currentDapur={currentDapur}
+              picName={currentUser.name}
+              laporanItems={laporanItems}
+              onSaveLaporan={handleSaveLaporan}
+            />
+          )}
+
           {activeTab === 'akun' && (
             <ProfileScreen
               currentDapur={currentDapur}
@@ -417,6 +478,7 @@ export const App: React.FC = () => {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           pendingReceivingCount={penerimaanItems.filter(i => i.ada_retur && !i.jam_sampai_retur).length}
+          pendingLaporanCount={laporanItems.filter(i => i.status === 'pending').length}
         />
       </div>
 

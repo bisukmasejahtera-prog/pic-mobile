@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Truck, ClipboardCheck, History, User, Building2, ShieldCheck, LogOut, Calendar } from 'lucide-react';
+import { LayoutDashboard, Truck, ClipboardCheck, AlertTriangle, User, Building2, ShieldCheck, LogOut, Calendar } from 'lucide-react';
 import { TabType, Dapur } from '../../types';
 import { formatDateIndo, getDateStatusLabel } from '../../utils/dateUtils';
 
@@ -25,6 +25,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
     { id: 'beranda' as TabType, label: 'Beranda Ops', icon: LayoutDashboard, desc: 'Ringkasan & status harian' },
     { id: 'penerimaan' as TabType, label: 'Penerimaan Bahan', icon: Truck, desc: 'Timbangan & Surat Jalan' },
     { id: 'riwayat' as TabType, label: 'Riwayat & Mutu', icon: ClipboardCheck, desc: 'Arsip nota, QC & retur' },
+    { id: 'laporan_dapur' as TabType, label: 'Laporan Dapur', icon: AlertTriangle, desc: 'Kendala & ketidaksesuaian' },
     { id: 'akun' as TabType, label: 'Akun & Sistem', icon: User, desc: 'Pengaturan & profil PIC' }
   ];
 

@@ -38,7 +38,7 @@ export async function clearPicStorage(page: Page) {
   });
 }
 
-export type TabTarget = 'beranda' | 'penerimaan' | 'cek_mutu' | 'riwayat' | 'akun';
+export type TabTarget = 'beranda' | 'penerimaan' | 'cek_mutu' | 'riwayat' | 'laporan_dapur' | 'akun';
 
 /**
  * Responsive navigation helper for both Mobile bottom-nav and Desktop sidebar.
@@ -53,6 +53,7 @@ export async function navigateToTab(page: Page, tab: TabTarget) {
       penerimaan: /Penerimaan/i,
       cek_mutu: /Riwayat & Mutu|Cek Mutu/i,
       riwayat: /Riwayat & Mutu|Riwayat/i,
+      laporan_dapur: /Laporan Dapur|Laporan/i,
       akun: /Akun/i
     };
     await mobileNav.getByRole('button', { name: mobileLabels[tab] }).click();
@@ -63,6 +64,7 @@ export async function navigateToTab(page: Page, tab: TabTarget) {
       penerimaan: /Penerimaan Bahan/i,
       cek_mutu: /Riwayat & Mutu|Cek Mutu/i,
       riwayat: /Riwayat & Mutu|Riwayat/i,
+      laporan_dapur: /Laporan Dapur/i,
       akun: /Akun/i
     };
     await desktopAside.getByRole('button', { name: desktopLabels[tab] }).first().click();
