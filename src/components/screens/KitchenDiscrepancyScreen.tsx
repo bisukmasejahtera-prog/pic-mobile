@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { Dapur, LaporanKendalaDapur, KategoriKendala, TingkatUrgensi, StatusKendala } from '../../types';
 import { formatDateIndo } from '../../utils/dateUtils';
-import { uploadPhotoToGoogleDrive } from '../../utils/googleDrive';
+import { uploadPhotoToGoogleDrive, GDRIVE_KENDALA_FOLDER_ID, GDRIVE_KENDALA_FOLDER_URL } from '../../utils/googleDrive';
 import { getDriveDirectImageUrl } from '../../utils/googleDrive';
 
 interface KitchenDiscrepancyScreenProps {
@@ -173,7 +173,7 @@ export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> =
       const res = await uploadPhotoToGoogleDrive(
         file,
         fileName,
-        undefined,
+        GDRIVE_KENDALA_FOLDER_ID,
         `Bukti Kendala Dapur ${currentDapur.nama}: ${formJudul || formKategori}`
       );
       const finalUrl = res.thumbnailUrl || res.webViewLink || res.downloadUrl;
@@ -660,6 +660,21 @@ export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> =
                       {isUploadingPhoto ? '...' : '+ Foto'}
                     </span>
                   </button>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-gray-500 pt-1">
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                    Tersimpan di Google Drive Kendala Dapur
+                  </span>
+                  <a
+                    href={GDRIVE_KENDALA_FOLDER_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 hover:underline flex items-center gap-0.5 font-semibold"
+                  >
+                    <span>Folder Drive</span>
+                    <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
                 </div>
               </div>
 

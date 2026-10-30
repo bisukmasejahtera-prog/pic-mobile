@@ -9,6 +9,12 @@ export const GDRIVE_BAHAN_FOLDER_ID =
 
 export const GDRIVE_BAHAN_FOLDER_URL = `https://drive.google.com/drive/folders/${GDRIVE_BAHAN_FOLDER_ID}?usp=sharing`;
 
+export const GDRIVE_KENDALA_FOLDER_ID = 
+  (import.meta as any).env?.VITE_GDRIVE_KENDALA_FOLDER_ID || 
+  '1ZrdijvtBgPOGrrCoAAuV1yRiXhSzIwRJ';
+
+export const GDRIVE_KENDALA_FOLDER_URL = `https://drive.google.com/drive/folders/${GDRIVE_KENDALA_FOLDER_ID}?usp=sharing`;
+
 export const APPS_SCRIPT_WEBHOOK_URL = 
   (import.meta as any).env?.VITE_GOOGLE_APPS_SCRIPT_URL || 
   'https://script.google.com/macros/s/AKfycbz6KsFjcpYjU0l6iTWt_BdXnt6zxuRubLPh5qGkoE7yrCq0vLTvGXAJdw79LngqtSQ5iw/exec';
