@@ -19,6 +19,7 @@ export interface UploadResult {
   webViewLink: string;
   downloadUrl?: string;
   folderUrl?: string;
+  thumbnailUrl?: string;
 }
 
 export interface GenerateBahanPhotoFileNameParams {
@@ -113,6 +114,50 @@ export async function uploadPhotoToGoogleDrive(
     fileName: json.fileName || fileName,
     webViewLink: json.webViewLink || `https://drive.google.com/file/d/${json.fileId}/view`,
     downloadUrl: json.downloadUrl,
-    folderUrl: json.folderUrl
+    folderUrl: json.folderUrl,
+    thumbnailUrl: `https://drive.google.com/thumbnail?id=${json.fileId}&sz=w800`
   };
+}
+
+/**
+ * Converts a Google Drive file link, file ID, or data URI into a direct displayable image URL
+ */
+export function getDriveDirectImageUrl(url: string, size: number = 600): string {
+  if (!url) return '';
+  if (url.startsWith('data:') || url.startsWith('blob:') || url.includes('unsplash.com')) {
+    return url;
+  }
+
+  // Extract fileId from various Google Drive formats
+  const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+                url.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
+                url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+  if (match && match[1]) {
+    const fileId = match[1];
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size}`;
+  }
+
+  return url;
+}
+
+/**
+ * Ensures a Google Drive URL opens the official Google Drive viewer in a new tab
+ */
+export function getDriveWebLink(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+
+  const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+                url.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
+                url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+  if (match && match[1]) {
+    const fileId = match[1];
+    return `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
+  }
+
+  return url;
 }

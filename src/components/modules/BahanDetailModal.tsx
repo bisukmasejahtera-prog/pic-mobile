@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, CheckCircle2, Building2, Truck, Calendar, Clock, Scale, RotateCcw, ExternalLink, Thermometer } from 'lucide-react';
+import { X, CheckCircle2, Building2, Truck, Calendar, Clock, Scale, RotateCcw, ExternalLink, Thermometer, Camera } from 'lucide-react';
 import { PenerimaanBahanItem } from '../../types';
+import { getDriveDirectImageUrl, getDriveWebLink, GDRIVE_BAHAN_FOLDER_URL } from '../../utils/googleDrive';
 
 interface BahanDetailModalProps {
   item: PenerimaanBahanItem | null;
@@ -130,23 +131,72 @@ export const BahanDetailModal: React.FC<BahanDetailModalProps> = ({
           {/* Photos */}
           {item.foto_urls && item.foto_urls.length > 0 && (
             <div>
-              <h4 className="text-xs font-bold text-gray-900 mb-2">
-                Foto Bukti Fisik Timbangan / Bahan
-              </h4>
-              <div className="grid grid-cols-3 gap-2">
-                {item.foto_urls.map((url, i) => (
-                  <div key={i} className="relative rounded-xl overflow-hidden border border-gray-200 aspect-square group">
-                    <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold text-gray-900">
+                  Foto Bukti Fisik Timbangan / Bahan ({item.foto_urls.length})
+                </h4>
+                <a
+                  href={GDRIVE_BAHAN_FOLDER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-sky-700 font-bold hover:underline inline-flex items-center gap-1"
+                >
+                  <span>Folder Google Drive</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {item.foto_urls.map((rawUrl, i) => {
+                  const directImageUrl = getDriveDirectImageUrl(rawUrl, 600);
+                  const webViewUrl = getDriveWebLink(rawUrl);
+
+                  return (
+                    <div 
+                      key={i} 
+                      className="relative rounded-xl overflow-hidden border border-gray-200 aspect-square group bg-gray-100 flex items-center justify-center shadow-xs"
                     >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                ))}
+                      <img 
+                        src={directImageUrl} 
+                        alt={`Bukti Foto ${i + 1}`} 
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.dataset.triedBackup) {
+                            target.dataset.triedBackup = 'true';
+                            const match = rawUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || rawUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                            if (match && match[1]) {
+                              target.src = `https://lh3.googleusercontent.com/d/${match[1]}=w600`;
+                              return;
+                            }
+                          }
+                          // Fallback to placeholder if external image tag is blocked
+                          target.style.display = 'none';
+                          const fallback = target.parentElement?.querySelector('.photo-fallback');
+                          if (fallback) {
+                            (fallback as HTMLElement).style.display = 'flex';
+                          }
+                        }}
+                      />
+                      <div 
+                        className="photo-fallback hidden absolute inset-0 flex flex-col items-center justify-center p-2 text-center bg-gray-100 text-gray-600"
+                      >
+                        <Camera className="w-6 h-6 text-gray-400 mb-1" />
+                        <span className="text-[11px] font-bold text-gray-800">Bukti Foto {i + 1}</span>
+                        <span className="text-[9px] text-sky-700 font-semibold mt-0.5">Buka di Drive &rarr;</span>
+                      </div>
+                      <a
+                        href={webViewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity gap-1"
+                        title="Buka foto di Google Drive"
+                      >
+                        <ExternalLink className="w-5 h-5 text-white" />
+                        <span className="text-[10px] font-bold">Buka di Drive</span>
+                      </a>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

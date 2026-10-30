@@ -84,12 +84,32 @@ export const App: React.FC = () => {
       .then((docs) => {
         if (!isMounted) return;
         if (Array.isArray(docs)) {
-          const sorted = (docs as PenerimaanBahanItem[]).sort((a, b) => {
+          // Check if localStorage has unsynced items
+          let localItems: PenerimaanBahanItem[] = [];
+          try {
+            const saved = localStorage.getItem(STORAGE_KEY_ITEMS);
+            if (saved) localItems = JSON.parse(saved);
+          } catch {
+            // ignore
+          }
+
+          const firestoreMap = new Map((docs as PenerimaanBahanItem[]).map(d => [d.id, d]));
+
+          // If local items exist that are not yet in Firestore, sync them to Firestore!
+          for (const item of localItems) {
+            if (!firestoreMap.has(item.id)) {
+              saveDocument('penerimaan_bahan', item.id, item).catch(() => {});
+              firestoreMap.set(item.id, item);
+            }
+          }
+
+          const combined = Array.from(firestoreMap.values()).sort((a, b) => {
             const timeA = new Date(a.created_at || a.tanggal).getTime();
             const timeB = new Date(b.created_at || b.tanggal).getTime();
             return timeB - timeA;
           });
-          setPenerimaanItems(sorted);
+
+          setPenerimaanItems(combined);
         }
       })
       .catch((err) => {
@@ -153,14 +173,16 @@ export const App: React.FC = () => {
     showToast('Anda telah keluar dari akun.');
   };
 
-  const handleSaveBahanItem = (newItem: PenerimaanBahanItem) => {
+  const handleSaveBahanItem = async (newItem: PenerimaanBahanItem) => {
     setPenerimaanItems(prev => [newItem, ...prev]);
     showToast(`Laporan ${newItem.nama_bahan_baku} (${newItem.jumlah_sampai} ${newItem.satuan}) berhasil disimpan!`);
     
     // Sync to Firestore collection 'penerimaan_bahan'
-    saveDocument('penerimaan_bahan', newItem.id, newItem).catch(err => {
+    try {
+      await saveDocument('penerimaan_bahan', newItem.id, newItem);
+    } catch (err) {
       console.warn('Sync Firestore offline fallback:', err);
-    });
+    }
   };
 
   const handleDeleteBahanItem = (id: string) => {

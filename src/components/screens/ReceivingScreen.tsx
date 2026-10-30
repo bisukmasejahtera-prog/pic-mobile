@@ -31,7 +31,8 @@ import { getTodayDateStr, getTomorrowDateStr, formatDateIndo } from '../../utils
 import { 
   uploadPhotoToGoogleDrive, 
   generateBahanPhotoFileName, 
-  GDRIVE_BAHAN_FOLDER_URL 
+  GDRIVE_BAHAN_FOLDER_URL,
+  getDriveDirectImageUrl
 } from '../../utils/googleDrive';
 
 // Quick recommendation chips for retur reasons
@@ -136,8 +137,8 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
         undefined,
         `Bukti Penerimaan SPPG ${currentDapur.nama} - ${namaBahanBaku || 'Bahan Baku'}`
       );
-      // Use webViewLink or direct download URL
-      const finalUrl = uploadRes.webViewLink || uploadRes.downloadUrl;
+      // Use direct thumbnail URL, webViewLink or direct download URL
+      const finalUrl = uploadRes.thumbnailUrl || uploadRes.webViewLink || uploadRes.downloadUrl;
       if (finalUrl) {
         setPhotos(prev => [...prev, finalUrl]);
         setPhotoUploadNotice(`Tersimpan di Google Drive (${autoFileName})`);
@@ -573,8 +574,18 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
 
             {/* Photo Previews */}
             {photos.map((url, idx) => (
-              <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-emerald-500 shrink-0 group">
-                <img src={url} alt={`Bukti ${idx + 1}`} className="w-full h-full object-cover" />
+              <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-emerald-500 shrink-0 group bg-gray-100 flex items-center justify-center">
+                <img 
+                  src={getDriveDirectImageUrl(url)} 
+                  alt={`Bukti ${idx + 1}`} 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                    if (match && match[1]) {
+                      e.currentTarget.src = `https://lh3.googleusercontent.com/d/${match[1]}=w400`;
+                    }
+                  }}
+                />
                 <button
                   type="button"
                   onClick={() => setPhotos(prev => prev.filter((_, i) => i !== idx))}

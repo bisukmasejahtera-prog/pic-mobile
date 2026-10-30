@@ -36,12 +36,32 @@ const auth = getAuth(app);
 export { app, db, auth };
 
 /**
+ * Recursively remove undefined values from an object
+ * Cloud Firestore setDoc/updateDoc fails if any field has value undefined.
+ */
+export function sanitizeFirestoreData<T extends Record<string, any>>(data: T): Partial<T> {
+  if (!data || typeof data !== 'object') return data;
+  const sanitized: any = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+        sanitized[key] = sanitizeFirestoreData(value);
+      } else {
+        sanitized[key] = value;
+      }
+    }
+  }
+  return sanitized;
+}
+
+/**
  * Save / Merge a document in Firestore
  */
 export async function saveDocument(collectionName: string, docId: string, data: any) {
   try {
     const docRef = doc(db, collectionName, docId);
-    await setDoc(docRef, data, { merge: true });
+    const cleaned = sanitizeFirestoreData(data);
+    await setDoc(docRef, cleaned, { merge: true });
     return true;
   } catch (error) {
     console.error(`Error saving document ${docId} to ${collectionName}:`, error);
