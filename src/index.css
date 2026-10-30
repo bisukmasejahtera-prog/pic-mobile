@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #F9FAFB;
+  color: #111827;
+}
+
+/* Field Ops Ergonomics - Minimum 48px touch targets for critical interactive elements */
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+/* Subtle flat elevation shadows from design guide */
+.sticky-bar-shadow {
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.bottom-nav-shadow {
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+}
