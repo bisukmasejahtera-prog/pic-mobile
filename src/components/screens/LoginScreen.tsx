@@ -23,16 +23,26 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 
 interface LoginScreenProps {
   currentDapur?: Dapur;
-  onLoginSuccess: (userData: { name: string; email: string }) => void;
+  allDapurs?: Dapur[];
+  onLoginSuccess: (userData: { 
+    name: string; 
+    email: string;
+    assigned_dapurs?: string[];
+    assigned_dapur_names?: string[];
+    dapur_id?: string;
+  }) => void;
 }
 
 interface PendingRegistration {
   name: string;
   email: string;
   phone: string;
+  dapurName?: string;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
+  currentDapur,
+  allDapurs = [],
   onLoginSuccess
 }) => {
   // Mode: 'login' | 'register'
@@ -48,6 +58,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
+  const [regDapurId, setRegDapurId] = useState<string>(() => {
+    return currentDapur?.id || (allDapurs[0]?.id ?? 'd-1790646298017');
+  });
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
@@ -121,7 +134,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       setIsLoading(false);
       onLoginSuccess({
         name: uDoc.nama_lengkap || 'Petugas PIC Dapur',
-        email: uDoc.email || emailTrim
+        email: uDoc.email || emailTrim,
+        assigned_dapurs: uDoc.assigned_dapurs || (uDoc.dapur_id ? [uDoc.dapur_id] : []),
+        assigned_dapur_names: uDoc.assigned_dapur_names || [],
+        dapur_id: uDoc.dapur_id || (uDoc.assigned_dapurs && uDoc.assigned_dapurs[0])
       });
       return;
     } catch (dbErr: any) {
@@ -160,6 +176,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     setIsLoading(true);
 
     const newUid = `u-pic-${Date.now()}`;
+    const selectedDapurObj = allDapurs.find(d => d.id === regDapurId) || currentDapur;
+    const dapurId = selectedDapurObj?.id || regDapurId;
+    const dapurName = selectedDapurObj?.nama || 'Dapur Dummy';
+
     const regPayload = {
       uid: newUid,
       email: regEmail.trim().toLowerCase(),
@@ -170,8 +190,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       approval_status: 'pending',
       invitation_status: 'invited',
       is_active: false,
-      assigned_dapurs: [],
-      assigned_dapur_names: ['Menunggu Penugasan Maker'],
+      assigned_dapurs: [dapurId],
+      assigned_dapur_names: [dapurName],
+      dapur_id: dapurId,
       created_at: new Date().toISOString()
     };
 
@@ -185,7 +206,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     setPendingData({
       name: regName.trim(),
       email: regEmail.trim(),
-      phone: regPhone.trim()
+      phone: regPhone.trim(),
+      dapurName: dapurName
     });
   };
 
@@ -195,7 +217,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       setIsLoading(false);
       onLoginSuccess({
         name: 'Budi Santoso, S.P',
-        email: 'budi.santoso@bisukma.org'
+        email: 'budi.santoso@bisukma.org',
+        assigned_dapurs: ['d-1790646298017'],
+        assigned_dapur_names: ['Dapur Dummy'],
+        dapur_id: 'd-1790646298017'
       });
     }, 300);
   };
@@ -307,7 +332,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 <div className="flex justify-between items-center pb-1.5 border-b border-gray-200/60">
                   <span className="text-gray-500 font-medium">Unit Dapur:</span>
                   <span className="font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-[10px]">
-                    Dipilihkan Maker Operasional
+                    {pendingData.dapurName || 'Dapur Dummy'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -512,14 +537,37 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   </div>
                 </div>
 
-                {/* Unit Dapur Penugasan (Ditetapkan oleh Maker Operasional) */}
-                <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-1">
-                  <div className="flex items-center gap-1.5 text-amber-900 font-bold text-[11px]">
-                    <Building2 className="w-3.5 h-3.5 text-amber-700" />
-                    <span>UNIT DAPUR PENUGASAN</span>
+                {/* Unit Dapur Penugasan */}
+                <div>
+                  <label htmlFor="reg-dapur" className="font-bold text-[#374151] block mb-1">
+                    UNIT DAPUR SPPG <span className="text-red-600">*</span>
+                  </label>
+                  <div className="relative">
+                    <Building2 className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <select
+                      id="reg-dapur"
+                      name="dapur"
+                      required
+                      value={regDapurId}
+                      onChange={(e) => setRegDapurId(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-xs font-semibold text-[#111827] focus:bg-white focus:outline-none focus:border-gray-500 cursor-pointer"
+                    >
+                      {allDapurs.length > 0 ? (
+                        allDapurs.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.nama} ({d.kode_bgn})
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="d-1790646298017">Dapur Dummy (SPPG-DUMMY-01)</option>
+                          <option value="d-1">Dapur Bisukma I Tarutung (SPPG-TRT-001)</option>
+                        </>
+                      )}
+                    </select>
                   </div>
-                  <p className="text-[11px] text-amber-800 leading-relaxed">
-                    Unit dapur penugasan akan ditentukan dan ditetapkan langsung oleh Tim Maker Operasional saat proses verifikasi akun.
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Pilih unit dapur penugasan utama tempat Anda bertugas sebagai PIC logistik.
                   </p>
                 </div>
 

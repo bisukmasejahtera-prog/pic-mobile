@@ -12,12 +12,16 @@ import { Dapur } from '../../types';
 
 interface ProfileScreenProps {
   currentDapur: Dapur;
+  allDapurs?: Dapur[];
+  onSelectDapur?: (dapur: Dapur) => void;
   picName?: string;
   onLogout?: () => void;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   currentDapur,
+  allDapurs = [],
+  onSelectDapur,
   picName = 'Budi Santoso, S.P',
   onLogout
 }) => {
@@ -85,6 +89,33 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </strong>
           </div>
         </div>
+
+        {/* Kitchen Switcher */}
+        {allDapurs && allDapurs.length > 1 && onSelectDapur && (
+          <div className="pt-1">
+            <label htmlFor="select-dapur-profile" className="block text-xs font-bold text-gray-700 mb-1.5">
+              Ganti Unit Dapur Aktif:
+            </label>
+            <select
+              id="select-dapur-profile"
+              value={currentDapur.id}
+              onChange={(e) => {
+                const found = allDapurs.find(d => d.id === e.target.value);
+                if (found) onSelectDapur(found);
+              }}
+              className="w-full py-2.5 px-3 bg-[#F9FAFB] border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:bg-white focus:outline-none focus:border-gray-500 cursor-pointer min-h-[44px]"
+            >
+              {allDapurs.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nama} ({d.kode_bgn})
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-gray-500 mt-1">
+              Pilih unit dapur untuk menyesuaikan pencatatan logistik dan laporan bahan masuk.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Logout Action */}

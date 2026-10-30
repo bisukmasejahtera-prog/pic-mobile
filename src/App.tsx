@@ -18,23 +18,41 @@ const STORAGE_KEY_ITEMS = 'pic_mobile_bahan_items_v1';
 const STORAGE_KEY_DAPUR = 'pic_mobile_dapur_v1';
 const STORAGE_KEY_AUTH = 'pic_mobile_auth_v1';
 const STORAGE_KEY_DATE = 'pic_mobile_selected_date_v1';
+const STORAGE_KEY_ALL_DAPURS = 'pic_mobile_all_dapurs_v1';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('beranda');
   
+  // All Dapurs state loaded from cache or MOCK_DAPURS, enriched live from Firestore
+  const [allDapurs, setAllDapurs] = useState<Dapur[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_ALL_DAPURS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return MOCK_DAPURS;
+  });
+
   // Kitchen state with persistence (Assigned to 1 kitchen)
   const [currentDapur, setCurrentDapur] = useState<Dapur>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_DAPUR);
       if (saved) {
         const parsed = JSON.parse(saved);
-        const match = MOCK_DAPURS.find(d => d.id === parsed.id);
-        if (match) return match;
+        // Trust saved dapur directly if valid object
+        if (parsed && parsed.id && parsed.nama) {
+          return parsed;
+        }
       }
     } catch {
       // ignore
     }
-    return MOCK_DAPURS[0];
+    // Default fallback to Dapur Dummy if found, else first kitchen
+    return MOCK_DAPURS.find(d => d.id === 'd-1790646298017') || MOCK_DAPURS[0];
   });
 
   // Operational Date State with persistence
@@ -121,6 +139,49 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // Fetch and enrich dapurs list from Firestore collection 'dapurs' on mount
+  useEffect(() => {
+    let isMounted = true;
+    getCollectionDocs('dapurs')
+      .then((docs) => {
+        if (!isMounted) return;
+        if (Array.isArray(docs) && docs.length > 0) {
+          const mapped: Dapur[] = docs.map((d: any) => ({
+            id: d.id,
+            nama: d.nama || d.name || 'Dapur SPPG',
+            kode_bgn: d.kode_bgn || d.kode || `SPPG-${String(d.id || '').slice(-3).toUpperCase()}`,
+            alamat: d.alamat || d.address || 'Alamat Unit Dapur',
+            is_ud_yayasan_hub: d.is_ud_yayasan_hub ?? (d.tipe === 'yayasan_hub' || d.id === 'd-1'),
+            vendor_default_id: d.vendor_default_id || 'vnd-ud-bisukma'
+          }));
+
+          const map = new Map<string, Dapur>();
+          MOCK_DAPURS.forEach(d => map.set(d.id, d));
+          mapped.forEach(d => map.set(d.id, d));
+          const merged = Array.from(map.values());
+          setAllDapurs(merged);
+          try {
+            localStorage.setItem(STORAGE_KEY_ALL_DAPURS, JSON.stringify(merged));
+          } catch {
+            // ignore
+          }
+
+          // If current kitchen matches remote data, keep it synchronized
+          setCurrentDapur(prev => {
+            const match = merged.find(d => d.id === prev.id);
+            return match || prev;
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('Sync dapurs from Firestore fallback:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Sync state to localStorage
   useEffect(() => {
     try {
@@ -153,13 +214,40 @@ export const App: React.FC = () => {
     }, 3500);
   };
 
-  const handleLoginSuccess = (userData: { name: string; email: string }) => {
-    setCurrentUser(userData);
+  const handleLoginSuccess = (userData: { 
+    name: string; 
+    email: string;
+    assigned_dapurs?: string[];
+    assigned_dapur_names?: string[];
+    dapur_id?: string;
+  }) => {
+    const userProfile = { name: userData.name, email: userData.email };
+    setCurrentUser(userProfile);
     try {
-      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(userData));
+      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(userProfile));
     } catch {
       // ignore
     }
+
+    // Resolve assigned kitchen from user profile
+    const targetDapurId = userData.dapur_id || (userData.assigned_dapurs && userData.assigned_dapurs[0]);
+    if (targetDapurId) {
+      const match = allDapurs.find(d => d.id === targetDapurId) || MOCK_DAPURS.find(d => d.id === targetDapurId);
+      if (match) {
+        setCurrentDapur(match);
+      } else if (userData.assigned_dapur_names && userData.assigned_dapur_names[0]) {
+        const customDapur: Dapur = {
+          id: targetDapurId,
+          nama: userData.assigned_dapur_names[0],
+          kode_bgn: targetDapurId.startsWith('d-') ? `SPPG-${targetDapurId.slice(-4).toUpperCase()}` : 'SPPG-DAPUR',
+          alamat: 'Alamat Unit Dapur SPPG',
+          is_ud_yayasan_hub: false,
+          vendor_default_id: 'vnd-ud-bisukma'
+        };
+        setCurrentDapur(customDapur);
+      }
+    }
+
     showToast(`Selamat datang, ${userData.name}!`);
   };
 
@@ -199,6 +287,8 @@ export const App: React.FC = () => {
   if (!currentUser) {
     return (
       <LoginScreen
+        currentDapur={currentDapur}
+        allDapurs={allDapurs}
         onLoginSuccess={handleLoginSuccess}
       />
     );
@@ -278,6 +368,11 @@ export const App: React.FC = () => {
           {activeTab === 'akun' && (
             <ProfileScreen
               currentDapur={currentDapur}
+              allDapurs={allDapurs}
+              onSelectDapur={(d) => {
+                setCurrentDapur(d);
+                showToast(`Unit dapur aktif diubah ke ${d.nama}`);
+              }}
               picName={currentUser.name}
               onLogout={handleLogout}
             />
