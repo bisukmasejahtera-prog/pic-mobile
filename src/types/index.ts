@@ -1,4 +1,4 @@
-export type TabType = 'beranda' | 'penerimaan' | 'riwayat' | 'laporan_dapur' | 'akun' | 'cek_mutu';
+export type TabType = 'beranda' | 'penerimaan' | 'riwayat' | 'inventaris' | 'laporan_dapur' | 'akun' | 'cek_mutu';
 
 export type KategoriKendala = 
   | 'bahan_luar_rab' 
@@ -144,3 +144,38 @@ export interface PenerimaanBatch {
   tipe_dokumen?: 'surat_jalan' | 'manual_tanpa_sj' | 'nota_pasar';
   alasan_manual?: string;
 }
+
+export interface InventarisItem {
+  id: string;
+  kode_aset?: string;
+  dapur_id: string;
+  dapur_nama?: string;
+  nama_barang: string;
+  spesifikasi?: string;
+  kategori?: string;
+  satuan: string;
+  total_kuantitas_pcs: number;
+  kondisi_baik_pcs?: number;
+  kondisi_rusak_ringan_pcs?: number;
+  kondisi_rusak_berat_pcs?: number;
+  status_aset?: string;
+  last_inspected_at?: string;
+  last_inspected_by?: string;
+  last_inspected_status?: 'normal' | 'kendala';
+}
+
+export interface InspeksiMingguanLog {
+  id: string;
+  dapur_id: string;
+  dapur_nama: string;
+  pic_nama: string;
+  tanggal_inspeksi: string;
+  minggu_label: string;
+  total_alat: number;
+  total_normal: number;
+  total_kendala: number;
+  catatan?: string;
+  items_status: Record<string, 'normal' | 'kendala'>;
+  created_at: string;
+}
+

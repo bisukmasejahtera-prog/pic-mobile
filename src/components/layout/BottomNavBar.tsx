@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Truck, ClipboardCheck, AlertTriangle, User } from 'lucide-react';
+import { LayoutDashboard, Truck, ClipboardCheck, Wrench, AlertTriangle, User } from 'lucide-react';
 import { TabType } from '../../types';
 
 interface BottomNavBarProps {
@@ -19,13 +19,14 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
     { id: 'beranda' as TabType, label: 'Beranda', icon: LayoutDashboard },
     { id: 'penerimaan' as TabType, label: 'Penerimaan', icon: Truck, badge: pendingReceivingCount },
     { id: 'riwayat' as TabType, label: 'Riwayat', icon: ClipboardCheck },
+    { id: 'inventaris' as TabType, label: 'Inventaris', icon: Wrench },
     { id: 'laporan_dapur' as TabType, label: 'Laporan', icon: AlertTriangle, badge: pendingLaporanCount },
     { id: 'akun' as TabType, label: 'Akun', icon: User }
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] h-16 bottom-nav-shadow lg:hidden">
-      <div className="max-w-md mx-auto h-full grid grid-cols-5 px-1">
+      <div className="max-w-md mx-auto h-full grid grid-cols-6 px-0.5">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id || (tab.id === 'riwayat' && activeTab === 'cek_mutu');

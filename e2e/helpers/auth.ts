@@ -53,7 +53,7 @@ export async function clearPicStorage(page: Page) {
   });
 }
 
-export type TabTarget = 'beranda' | 'penerimaan' | 'cek_mutu' | 'riwayat' | 'laporan_dapur' | 'akun';
+export type TabTarget = 'beranda' | 'penerimaan' | 'cek_mutu' | 'riwayat' | 'inventaris' | 'laporan_dapur' | 'akun';
 
 /**
  * Responsive navigation helper for both Mobile bottom-nav and Desktop sidebar.
@@ -68,6 +68,7 @@ export async function navigateToTab(page: Page, tab: TabTarget) {
       penerimaan: /Penerimaan/i,
       cek_mutu: /Riwayat & Mutu|Cek Mutu|Riwayat/i,
       riwayat: /Riwayat & Mutu|Riwayat/i,
+      inventaris: /Inventaris/i,
       laporan_dapur: /Laporan Dapur|Laporan/i,
       akun: /Akun/i
     };
@@ -79,6 +80,7 @@ export async function navigateToTab(page: Page, tab: TabTarget) {
       penerimaan: /Penerimaan Bahan/i,
       cek_mutu: /Riwayat & Mutu|Cek Mutu|Riwayat/i,
       riwayat: /Riwayat & Mutu|Riwayat/i,
+      inventaris: /Inventaris Dapur|Inventaris/i,
       laporan_dapur: /Laporan Dapur/i,
       akun: /Akun/i
     };

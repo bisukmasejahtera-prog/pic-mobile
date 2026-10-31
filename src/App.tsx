@@ -7,6 +7,7 @@ import { DesktopSidebar } from './components/layout/DesktopSidebar';
 import { HomeScreen } from './components/screens/HomeScreen';
 import { ReceivingScreen } from './components/screens/ReceivingScreen';
 import { HistoryScreen } from './components/screens/HistoryScreen';
+import { KitchenInventoryScreen } from './components/screens/KitchenInventoryScreen';
 import { KitchenDiscrepancyScreen } from './components/screens/KitchenDiscrepancyScreen';
 import { ProfileScreen } from './components/screens/ProfileScreen';
 import { LoginScreen } from './components/screens/LoginScreen';
@@ -482,6 +483,17 @@ export const App: React.FC = () => {
               laporanItems={laporanItems}
               selectedDate={selectedDate}
               onOpenItemDetail={setSelectedItemForDetail}
+            />
+          )}
+
+          {activeTab === 'inventaris' && (
+            <KitchenInventoryScreen
+              currentDapur={currentDapur}
+              picName={currentUser.name}
+              onNavigateTab={setActiveTab}
+              onOpenLaporKendalaForAlat={() => {
+                setActiveTab('laporan_dapur');
+              }}
             />
           )}
 

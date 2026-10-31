@@ -151,6 +151,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <AlertTriangle className="w-4 h-4 text-white" />
               <span>+ Lapor Kendala Dapur</span>
             </button>
+
+            <button
+              type="button"
+              data-testid="hero-btn-inventaris"
+              onClick={() => onNavigateTab('inventaris')}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer min-h-[44px]"
+            >
+              <Wrench className="w-4 h-4 text-emerald-400" />
+              <span>Ceklis Inventaris Dapur</span>
+            </button>
           </div>
         </div>
 
