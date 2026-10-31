@@ -389,7 +389,15 @@ export const App: React.FC = () => {
   };
 
   const handleSaveBahanItem = async (newItem: PenerimaanBahanItem) => {
-    setPenerimaanItems(prev => [newItem, ...prev]);
+    setPenerimaanItems(prev => {
+      const idx = prev.findIndex(x => x.id === newItem.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = newItem;
+        return updated;
+      }
+      return [newItem, ...prev];
+    });
     showToast(`Laporan ${newItem.nama_bahan_baku} (${newItem.jumlah_sampai} ${newItem.satuan}) berhasil disimpan!`);
     
     // Sync to Firestore collection 'penerimaan_bahan'

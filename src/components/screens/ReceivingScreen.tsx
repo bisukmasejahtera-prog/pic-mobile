@@ -10,6 +10,8 @@ import {
   AlertTriangle, 
   Plus, 
   Trash2, 
+  Pencil,
+  X,
   Image as ImageIcon,
   Sparkles,
   Thermometer,
@@ -90,7 +92,9 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
   });
   const [jumlahSampai, setJumlahSampai] = useState<string>('');
   const [satuan, setSatuan] = useState<string>('Kg');
+  const [customSatuan, setCustomSatuan] = useState<string>('');
   const [jamSampai, setJamSampai] = useState<string>(getCurrentTimeString);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   // Retur section
   const [adaRetur, setAdaRetur] = useState<boolean>(false);
@@ -233,6 +237,57 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
     }
   };
 
+  const handleStartEditItem = (item: PenerimaanBahanItem) => {
+    setEditingItemId(item.id);
+    setNamaBahanBaku(item.nama_bahan_baku);
+    setNamaSupplier(item.nama_supplier);
+    setJumlahSampai(String(item.jumlah_sampai));
+
+    const standardUnits = ['Kg', 'Ikat', 'Butir', 'Liter', 'Dus', 'Pcs', 'Bungkus', 'Karung'];
+    if (standardUnits.includes(item.satuan)) {
+      setSatuan(item.satuan);
+      setCustomSatuan('');
+    } else {
+      setSatuan('Lainnya');
+      setCustomSatuan(item.satuan);
+    }
+
+    setJamSampai(item.jam_sampai);
+    setAdaRetur(Boolean(item.ada_retur));
+    setJumlahRetur(item.jumlah_retur ? String(item.jumlah_retur) : '');
+    setAlasanRetur(item.alasan_retur || '');
+    setJamSampaiRetur(item.jam_sampai_retur || '');
+    setSuhuCelsius(item.suhu_celsius !== undefined ? String(item.suhu_celsius) : '');
+    setCatatan(item.catatan || '');
+    setPhotos(item.foto_urls || []);
+    if (item.tanggal_menu) setTanggalMenu(item.tanggal_menu);
+
+    // Scroll to top of receiving form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingItemId(null);
+    setNamaBahanBaku('');
+    setJumlahSampai('');
+    setAdaRetur(false);
+    setJumlahRetur('');
+    setAlasanRetur('');
+    setJamSampaiRetur('');
+    setSuhuCelsius('');
+    setCatatan('');
+    setPhotos([]);
+    setSatuan('Kg');
+    setCustomSatuan('');
+    setJamSampai(getCurrentTimeString());
+    setTanggalMenu(tomorrowStr);
+    try {
+      localStorage.removeItem(STORAGE_KEY_RCV_DRAFT);
+    } catch {
+      // ignore
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -252,17 +307,19 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
 
     const returKg = adaRetur ? parseFloat(jumlahRetur) : undefined;
     const suhu = suhuCelsius ? parseFloat(suhuCelsius) : undefined;
+    const satuanFinal = satuan === 'Lainnya' ? (customSatuan.trim() || 'Kg') : satuan;
+    const existingItem = editingItemId ? penerimaanItems.find(x => x.id === editingItemId) : null;
 
     const newItem: PenerimaanBahanItem = {
-      id: `RCV-ITM-${Date.now()}`,
-      dapur_id: currentDapur.id,
-      dapur_nama: currentDapur.nama,
-      tanggal: todayStr,
+      id: editingItemId || `RCV-ITM-${Date.now()}`,
+      dapur_id: existingItem?.dapur_id || currentDapur.id,
+      dapur_nama: existingItem?.dapur_nama || currentDapur.nama,
+      tanggal: existingItem?.tanggal || todayStr,
       tanggal_menu: tanggalMenu,
       nama_bahan_baku: namaBahanBaku.trim(),
       nama_supplier: namaSupplier.trim(),
       jumlah_sampai: berat,
-      satuan,
+      satuan: satuanFinal,
       jam_sampai: jamSampai,
       ada_retur: adaRetur,
       jumlah_retur: returKg,
@@ -271,14 +328,18 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
       suhu_celsius: suhu,
       foto_urls: photos,
       catatan: catatan.trim() || undefined,
-      pic_nama: picName,
-      created_at: new Date().toISOString()
+      pic_nama: existingItem?.pic_nama || picName,
+      created_at: existingItem?.created_at || new Date().toISOString()
     };
 
     onSaveBahanItem(newItem);
-    setFeedbackSuccess(`Berhasil mencatat penerimaan: ${newItem.nama_bahan_baku} (${newItem.jumlah_sampai} ${newItem.satuan}) untuk Menu ${formatDateIndo(tanggalMenu, { withDayName: false })}`);
+    setFeedbackSuccess(editingItemId
+      ? `Berhasil memperbarui data penerimaan: ${newItem.nama_bahan_baku} (${newItem.jumlah_sampai} ${newItem.satuan})`
+      : `Berhasil mencatat penerimaan: ${newItem.nama_bahan_baku} (${newItem.jumlah_sampai} ${newItem.satuan}) untuk Menu ${formatDateIndo(tanggalMenu, { withDayName: false })}`
+    );
     
     // Reset form for next item upload
+    setEditingItemId(null);
     setNamaBahanBaku('');
     setJumlahSampai('');
     setAdaRetur(false);
@@ -288,6 +349,8 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
     setSuhuCelsius('');
     setCatatan('');
     setPhotos([]);
+    setSatuan('Kg');
+    setCustomSatuan('');
     setJamSampai(getCurrentTimeString());
     setTanggalMenu(tomorrowStr);
 
@@ -347,6 +410,23 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
       {/* Main Single Item Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#E5E7EB] p-4 sm:p-6 shadow-2xs space-y-4">
         
+        {/* Mode Edit Active Notice */}
+        {editingItemId && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-blue-900 text-xs font-bold animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <Pencil className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>Mode Edit: Sedang memperbarui laporan bahan masuk</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="text-[11px] underline text-blue-700 hover:text-blue-900 cursor-pointer"
+            >
+              Batal
+            </button>
+          </div>
+        )}
+
         {/* 1. Nama Bahan Baku */}
         <div>
           <label htmlFor="input-nama-bahan" className="text-xs font-bold text-[#111827] block mb-1">
@@ -415,8 +495,30 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
                 <option value="Butir">Butir</option>
                 <option value="Liter">Liter</option>
                 <option value="Dus">Dus</option>
+                <option value="Pcs">Pcs</option>
+                <option value="Bungkus">Bungkus</option>
+                <option value="Karung">Karung</option>
+                <option value="Lainnya">Lainnya...</option>
               </select>
             </div>
+
+            {/* Custom Satuan Input when 'Lainnya' is selected */}
+            {satuan === 'Lainnya' && (
+              <div className="mt-2.5 pt-2 border-t border-gray-200/60 animate-fadeIn">
+                <label className="block text-[10px] font-bold text-sky-800 uppercase tracking-wider mb-1">
+                  Ketik Satuan Custom *
+                </label>
+                <input
+                  type="text"
+                  data-testid="input-satuan-custom-rcv"
+                  required
+                  value={customSatuan}
+                  onChange={(e) => setCustomSatuan(e.target.value)}
+                  placeholder="Contoh: Zak, Kaleng, Pack, Piring, Keranjang..."
+                  className="w-full text-xs font-bold px-3 py-2 bg-sky-50/50 border border-sky-400 rounded-xl text-sky-950 focus:bg-white focus:outline-none focus:border-sky-600"
+                />
+              </div>
+            )}
 
             {/* Stepper Buttons */}
             <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-gray-200/60">
@@ -778,14 +880,26 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
           </p>
         </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          className="w-full py-3.5 px-4 bg-[#111827] text-white hover:bg-black rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 min-h-[48px] cursor-pointer"
-        >
-          <Check className="w-4 h-4" />
-          <span>Simpan Laporan Bahan Ini</span>
-        </button>
+        {/* Submit & Cancel Edit Buttons */}
+        <div className="flex items-center gap-2">
+          {editingItemId && (
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="py-3.5 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 min-h-[48px] cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+              <span>Batal</span>
+            </button>
+          )}
+          <button
+            type="submit"
+            className="flex-1 py-3.5 px-4 bg-[#111827] text-white hover:bg-black rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 min-h-[48px] cursor-pointer"
+          >
+            <Check className="w-4 h-4" />
+            <span>{editingItemId ? 'Perbarui Laporan Bahan Ini' : 'Simpan Laporan Bahan Ini'}</span>
+          </button>
+        </div>
 
       </form>
 
@@ -900,16 +1014,28 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
                     )}
                   </div>
 
-                  {onDeleteBahanItem && (
+                  <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => onDeleteBahanItem(item.id)}
-                      className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                      title="Hapus baris ini"
+                      data-testid={`btn-edit-penerimaan-${item.id}`}
+                      onClick={() => handleStartEditItem(item)}
+                      className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                      title="Edit baris penerimaan ini"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Pencil className="w-4 h-4" />
                     </button>
-                  )}
+
+                    {onDeleteBahanItem && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteBahanItem(item.id)}
+                        className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                        title="Hapus baris ini"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

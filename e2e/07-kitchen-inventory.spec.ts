@@ -61,4 +61,52 @@ test.describe('PIC-Mobile Kitchen Inventory & Weekly Checklist Flow', () => {
     // Verify modal closed
     await expect(page.getByText('1. Identitas & Spesifikasi Barang')).not.toBeVisible();
   });
+
+  test('TC-INV-05: Inputs asset with custom satuan (Lainnya) and tests edit asset modal', async ({ page }) => {
+    await navigateToTab(page, 'inventaris');
+
+    const openModalBtn = page.getByTestId('btn-open-input-aset');
+    await openModalBtn.click();
+
+    // Fill form
+    await page.getByTestId('input-nama-barang').fill('Piring Saji Melamin');
+    await page.getByTestId('input-spesifikasi').fill('Food Grade Tebal');
+
+    // Select custom satuan 'Lainnya'
+    const satuanSelect = page.getByTestId('select-satuan-barang');
+    await satuanSelect.selectOption('Lainnya');
+
+    // Custom text input should appear
+    const customSatuanInput = page.getByTestId('input-satuan-custom');
+    await expect(customSatuanInput).toBeVisible();
+    await customSatuanInput.fill('Lusin');
+
+    // Set quantity
+    await page.getByTestId('input-jumlah-barang').fill('10');
+    // Balance condition (kondisi baik = 10)
+    await page.locator('input[value="10"]').first().dispatchEvent('input');
+
+    // Submit
+    await page.getByTestId('btn-submit-inventaris').click();
+    await expect(page.getByText('1. Identitas & Spesifikasi Barang')).not.toBeVisible();
+
+    // Verify item created with custom unit
+    await expect(page.getByText('Piring Saji Melamin').first()).toBeVisible();
+
+    // Test Edit
+    const editBtn = page.locator('button[title*="Edit data"]').first();
+    await expect(editBtn).toBeVisible();
+    await editBtn.click();
+
+    // Modal opens in edit mode
+    await expect(page.getByText('Edit & Perbarui Data Aset')).toBeVisible();
+    await expect(page.getByTestId('btn-submit-inventaris')).toContainText(/Simpan Perubahan/i);
+
+    // Update name
+    await page.getByTestId('input-nama-barang').fill('Piring Saji Melamin Premium');
+    await page.getByTestId('btn-submit-inventaris').click();
+
+    // Verify update
+    await expect(page.getByText('Piring Saji Melamin Premium').first()).toBeVisible();
+  });
 });

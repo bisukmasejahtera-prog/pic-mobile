@@ -65,4 +65,42 @@ test.describe('PIC-Mobile Penerimaan Bahan Flow', () => {
       await expect(page.getByText(/Item berhasil dihapus dari daftar/i)).toBeVisible();
     }
   });
+
+  test('TC-RECV-04: Inputs receiving with custom satuan (Lainnya) and tests edit item flow', async ({ page }) => {
+    await page.locator('#input-nama-bahan').fill('Tepung Terigu Segitiga');
+    await page.locator('#input-nama-supplier').fill('Toko Bahan Kue Sejahtera');
+    await page.locator('#input-jumlah-sampai').fill('5');
+
+    // Select custom satuan 'Lainnya...'
+    await page.locator('#select-satuan').selectOption('Lainnya');
+    const customSatuanInput = page.getByTestId('input-satuan-custom-rcv');
+    await expect(customSatuanInput).toBeVisible();
+    await customSatuanInput.fill('Zak');
+
+    // Submit
+    const submitBtn = page.getByRole('button', { name: /Simpan Laporan Bahan Ini/i });
+    await submitBtn.click();
+
+    // Verify item created with custom unit
+    await expect(page.getByText(/Berhasil mencatat penerimaan: Tepung Terigu Segitiga/i)).toBeVisible();
+    await expect(page.getByText('5 Zak').first()).toBeVisible();
+
+    // Test Edit
+    const editBtn = page.locator('button[title*="Edit baris"]').first();
+    await expect(editBtn).toBeVisible();
+    await editBtn.click();
+
+    // Check mode edit banner and button
+    await expect(page.getByText(/Mode Edit: Sedang memperbarui laporan/i)).toBeVisible();
+    const updateBtn = page.getByRole('button', { name: /Perbarui Laporan Bahan Ini/i });
+    await expect(updateBtn).toBeVisible();
+
+    // Change amount to 8
+    await page.locator('#input-jumlah-sampai').fill('8');
+    await updateBtn.click();
+
+    // Verify update
+    await expect(page.getByText(/Berhasil memperbarui data penerimaan/i)).toBeVisible();
+    await expect(page.getByText('8 Zak').first()).toBeVisible();
+  });
 });

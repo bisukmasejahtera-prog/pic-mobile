@@ -17,7 +17,8 @@ import {
   Refrigerator,
   Truck,
   Sparkles,
-  Info
+  Info,
+  Pencil
 } from 'lucide-react';
 import { Dapur, InventarisItem, InspeksiMingguanLog, TabType } from '../../types';
 import { db, saveDocument, getCollectionDocs } from '../../lib/firebase';
@@ -78,6 +79,7 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showInputModal, setShowInputModal] = useState(false);
+  const [selectedItemForEdit, setSelectedItemForEdit] = useState<InventarisItem | null>(null);
 
   // Sync inventaris for this kitchen in real-time from Firestore
   useEffect(() => {
@@ -170,12 +172,18 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleSaveAsetSuccess = (newItem: InventarisItem) => {
+  const handleSaveAsetSuccess = (savedItem: InventarisItem) => {
     setInventarisItems(prev => {
-      if (prev.some(x => x.id === newItem.id)) return prev;
-      return [newItem, ...prev];
+      const idx = prev.findIndex(x => x.id === savedItem.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = savedItem;
+        return copy;
+      }
+      return [savedItem, ...prev];
     });
-    showNotification(`Aset "${newItem.nama_barang}" berhasil dicatat di ${currentDapur.nama}!`);
+    showNotification(`Aset "${savedItem.nama_barang}" berhasil ${selectedItemForEdit ? 'diperbarui' : 'dicatat'} di ${currentDapur.nama}!`);
+    setSelectedItemForEdit(null);
   };
 
   // Filtered Items
@@ -341,7 +349,10 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
           <button
             type="button"
             data-testid="btn-open-input-aset"
-            onClick={() => setShowInputModal(true)}
+            onClick={() => {
+              setSelectedItemForEdit(null);
+              setShowInputModal(true);
+            }}
             className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer min-h-[42px]"
           >
             <Plus className="w-4 h-4" />
@@ -496,7 +507,10 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
               <button
                 type="button"
                 data-testid="btn-empty-input-aset"
-                onClick={() => setShowInputModal(true)}
+                onClick={() => {
+                  setSelectedItemForEdit(null);
+                  setShowInputModal(true);
+                }}
                 className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer min-h-[40px]"
               >
                 <Plus className="w-4 h-4" />
@@ -576,33 +590,49 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
                     </div>
                   </div>
 
-                  {/* Status Toggle Buttons */}
+                  {/* Action & Status Toggle Buttons */}
                   <div className="flex flex-col sm:items-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
-                    <div className="inline-flex rounded-xl bg-gray-100 p-1 border border-gray-200">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       <button
                         type="button"
-                        data-testid={`btn-cond-normal-${item.id}`}
-                        onClick={() => handleToggleCondition(item.id, 'normal')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[36px] ${
-                          !isKendala 
-                            ? 'bg-emerald-600 text-white shadow-xs' 
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
+                        data-testid={`btn-edit-aset-${item.id}`}
+                        onClick={() => {
+                          setSelectedItemForEdit(item);
+                          setShowInputModal(true);
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-gray-300 hover:border-blue-400 bg-white hover:bg-blue-50/50 text-gray-700 hover:text-blue-700 text-xs font-bold transition-all cursor-pointer min-h-[36px]"
+                        title="Edit data dan kondisi fisik aset ini"
                       >
-                        ✓ Normal
+                        <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Edit</span>
                       </button>
-                      <button
-                        type="button"
-                        data-testid={`btn-cond-kendala-${item.id}`}
-                        onClick={() => handleToggleCondition(item.id, 'kendala')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[36px] ${
-                          isKendala 
-                            ? 'bg-red-600 text-white shadow-xs' 
-                            : 'text-gray-600 hover:text-red-700'
-                        }`}
-                      >
-                        ⚠ Ada Kendala
-                      </button>
+
+                      <div className="inline-flex rounded-xl bg-gray-100 p-1 border border-gray-200">
+                        <button
+                          type="button"
+                          data-testid={`btn-cond-normal-${item.id}`}
+                          onClick={() => handleToggleCondition(item.id, 'normal')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[36px] ${
+                            !isKendala 
+                              ? 'bg-emerald-600 text-white shadow-xs' 
+                              : 'text-gray-600 hover:text-gray-900'
+                          }`}
+                        >
+                          ✓ Normal
+                        </button>
+                        <button
+                          type="button"
+                          data-testid={`btn-cond-kendala-${item.id}`}
+                          onClick={() => handleToggleCondition(item.id, 'kendala')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[36px] ${
+                            isKendala 
+                              ? 'bg-red-600 text-white shadow-xs' 
+                              : 'text-gray-600 hover:text-red-700'
+                          }`}
+                        >
+                          ⚠ Ada Kendala
+                        </button>
+                      </div>
                     </div>
 
                     {isKendala && (
@@ -658,13 +688,17 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
         </div>
       </div>
 
-      {/* Modal Input Aset Tersedia */}
+      {/* Modal Input & Edit Aset Tersedia */}
       <FormInputAsetTersediaModal
         isOpen={showInputModal}
-        onClose={() => setShowInputModal(false)}
+        onClose={() => {
+          setShowInputModal(false);
+          setSelectedItemForEdit(null);
+        }}
         currentDapur={currentDapur}
         picName={picName}
         onSaveSuccess={handleSaveAsetSuccess}
+        itemToEdit={selectedItemForEdit}
       />
 
     </div>

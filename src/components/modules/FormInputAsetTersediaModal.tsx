@@ -23,7 +23,8 @@ interface FormInputAsetTersediaModalProps {
   onClose: () => void;
   currentDapur: Dapur;
   picName: string;
-  onSaveSuccess: (newItem: InventarisItem) => void;
+  onSaveSuccess: (savedItem: InventarisItem) => void;
+  itemToEdit?: InventarisItem | null;
 }
 
 export const KATEGORI_INVENTARIS_OPTIONS = [
@@ -40,7 +41,8 @@ export const SATUAN_INVENTARIS_OPTIONS = [
   { value: 'Buah', label: 'Buah' },
   { value: 'Set', label: 'Set' },
   { value: 'Pcs', label: 'Pcs' },
-  { value: 'Paket', label: 'Paket' }
+  { value: 'Paket', label: 'Paket' },
+  { value: 'Lainnya', label: 'Lainnya (Ketik Manual...)' }
 ];
 
 export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProps> = ({
@@ -48,7 +50,8 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
   onClose,
   currentDapur,
   picName,
-  onSaveSuccess
+  onSaveSuccess,
+  itemToEdit
 }) => {
   // Mode Selection: Saldo Awal / Data Lama (PIC Mode) vs Pembelian Baru (ERP Desktop Only)
   const [entryMode, setEntryMode] = useState<'saldo_awal_lama' | 'pembelian_baru'>('saldo_awal_lama');
@@ -65,6 +68,7 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
   // Section 3: Kuantitas & Rincian Fisik
   const [jumlahBarang, setJumlahBarang] = useState<number>(1);
   const [satuan, setSatuan] = useState('Unit');
+  const [customSatuan, setCustomSatuan] = useState('');
   const [kondisiBaik, setKondisiBaik] = useState<number>(1);
   const [kondisiRusakRingan, setKondisiRusakRingan] = useState<number>(0);
   const [kondisiRusakBerat, setKondisiRusakBerat] = useState<number>(0);
@@ -100,23 +104,49 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
     setKondisiBaik(clamped);
   };
 
-  // Reset form when opened
+  // Reset or pre-populate form when opened or when itemToEdit changes
   useEffect(() => {
     if (isOpen) {
-      setNamaBarang('');
-      setKategori(KATEGORI_INVENTARIS_OPTIONS[0]);
-      setSpesifikasi('');
-      setKodeAsetManual('');
-      setCatatanSimpel('');
-      setJumlahBarang(1);
-      setSatuan('Unit');
-      setKondisiBaik(1);
-      setKondisiRusakRingan(0);
-      setKondisiRusakBerat(0);
+      if (itemToEdit) {
+        setNamaBarang(itemToEdit.nama_barang || '');
+        setKategori(itemToEdit.kategori || KATEGORI_INVENTARIS_OPTIONS[0]);
+        setSpesifikasi(itemToEdit.spesifikasi || '');
+        setKodeAsetManual(itemToEdit.kode_aset || '');
+        setCatatanSimpel(itemToEdit.catatan || '');
+        setJumlahBarang(itemToEdit.total_kuantitas_pcs || 1);
+
+        const knownSatuan = ['Unit', 'Buah', 'Set', 'Pcs', 'Paket'];
+        if (itemToEdit.satuan && knownSatuan.includes(itemToEdit.satuan)) {
+          setSatuan(itemToEdit.satuan);
+          setCustomSatuan('');
+        } else if (itemToEdit.satuan) {
+          setSatuan('Lainnya');
+          setCustomSatuan(itemToEdit.satuan);
+        } else {
+          setSatuan('Unit');
+          setCustomSatuan('');
+        }
+
+        setKondisiBaik(itemToEdit.kondisi_baik_pcs ?? itemToEdit.total_kuantitas_pcs ?? 1);
+        setKondisiRusakRingan(itemToEdit.kondisi_rusak_ringan_pcs ?? 0);
+        setKondisiRusakBerat(itemToEdit.kondisi_rusak_berat_pcs ?? 0);
+      } else {
+        setNamaBarang('');
+        setKategori(KATEGORI_INVENTARIS_OPTIONS[0]);
+        setSpesifikasi('');
+        setKodeAsetManual('');
+        setCatatanSimpel('');
+        setJumlahBarang(1);
+        setSatuan('Unit');
+        setCustomSatuan('');
+        setKondisiBaik(1);
+        setKondisiRusakRingan(0);
+        setKondisiRusakBerat(0);
+      }
       setFormError(null);
       setIsSubmitting(false);
     }
-  }, [isOpen]);
+  }, [isOpen, itemToEdit]);
 
   if (!isOpen) return null;
 
@@ -142,15 +172,65 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
       return;
     }
 
+    const effectiveSatuan = satuan === 'Lainnya' ? (customSatuan.trim() || 'Unit') : satuan;
+
     setIsSubmitting(true);
     try {
-      const uniqueId = `inv-${Date.now()}`;
       const now = new Date();
       const currentYear = now.getFullYear();
       const bulanTahun = now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
       const randCode = String(Math.floor(100 + Math.random() * 900));
       const kodeAsetFinal = kodeAsetManual.trim() || `AST-${currentDapur.kode_bgn || 'DAPUR'}-${currentYear}-${randCode}`;
 
+      if (itemToEdit) {
+        // Edit existing inventory item
+        const updatedItem: InventarisItem = {
+          ...itemToEdit,
+          kode_aset: kodeAsetManual.trim() || itemToEdit.kode_aset,
+          nama_barang: namaBarang.trim(),
+          spesifikasi: spesifikasi.trim() || undefined,
+          kategori: kategori,
+          satuan: effectiveSatuan,
+          kuantitas_satuan: jumlahBarang,
+          total_kuantitas_pcs: jumlahBarang,
+          kondisi_baik_pcs: kondisiBaik,
+          kondisi_rusak_ringan_pcs: kondisiRusakRingan,
+          kondisi_rusak_berat_pcs: kondisiRusakBerat,
+          catatan: catatanSimpel.trim() || itemToEdit.catatan,
+          last_inspected_at: now.toISOString().split('T')[0],
+          last_inspected_by: picName,
+          last_inspected_status: (kondisiRusakRingan > 0 || kondisiRusakBerat > 0) ? 'kendala' : 'normal',
+          riwayat_alur: [
+            ...(itemToEdit.riwayat_alur || []),
+            {
+              id: `alr-${Date.now()}`,
+              tanggal: now.toISOString().split('T')[0],
+              tipe_event: 'pembelian_yayasan',
+              judul: 'Pembaruan Data Aset Dapur',
+              deskripsi: `Pembaruan data dan kondisi fisik aset oleh PIC (${picName}): ${jumlahBarang} ${effectiveSatuan}.`,
+              aktor_nama: picName,
+              aktor_role: 'PIC Dapur SPPG',
+              lokasi_asal: currentDapur.nama,
+              lokasi_tujuan: currentDapur.nama,
+              jumlah_pcs: jumlahBarang,
+              catatan: catatanSimpel.trim() || undefined
+            }
+          ]
+        };
+
+        try {
+          await saveDocument('inventaris', itemToEdit.id, updatedItem);
+        } catch (saveErr) {
+          console.warn('Sync Firestore inventaris offline fallback:', saveErr);
+        }
+
+        onSaveSuccess(updatedItem);
+        onClose();
+        return;
+      }
+
+      // Create new inventory item
+      const uniqueId = `inv-${Date.now()}`;
       const newItem: InventarisItem = {
         id: uniqueId,
         kode_aset: kodeAsetFinal,
@@ -165,7 +245,7 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
         nomor_po_faktur: '', // Akan dilengkapi Tim ERP Desktop
         kode_bast_terakhir: '', // Akan dilengkapi Tim ERP Desktop
         supplier_toko: '', // Akan dilengkapi Tim ERP Desktop
-        satuan: satuan,
+        satuan: effectiveSatuan,
         kuantitas_satuan: jumlahBarang,
         konversi_pcs: 1,
         total_kuantitas_pcs: jumlahBarang,
@@ -187,7 +267,7 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
             tanggal: now.toISOString().split('T')[0],
             tipe_event: 'pembelian_yayasan',
             judul: 'Pencatatan Saldo Awal Aset Dapur',
-            deskripsi: `Pencatatan fisik aset yang sudah tersedia di ${currentDapur.nama} sebanyak ${jumlahBarang} ${satuan}. Data administratif akan diverifikasi oleh Tim ERP Desktop Yayasan.`,
+            deskripsi: `Pencatatan fisik aset yang sudah tersedia di ${currentDapur.nama} sebanyak ${jumlahBarang} ${effectiveSatuan}. Data administratif akan diverifikasi oleh Tim ERP Desktop Yayasan.`,
             aktor_nama: picName,
             aktor_role: 'PIC Dapur SPPG',
             lokasi_asal: currentDapur.nama,
@@ -230,10 +310,10 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-bold text-white leading-tight">
-                Pencatatan & Inventarisasi Aset
+                {itemToEdit ? 'Edit & Perbarui Data Aset' : 'Pencatatan & Inventarisasi Aset'}
               </h3>
               <p className="text-[11px] sm:text-xs text-gray-300 mt-0.5">
-                Input aset fisik yang sudah tersedia di {currentDapur.nama}
+                {itemToEdit ? `Perbarui informasi aset di ${currentDapur.nama}` : `Input aset fisik yang sudah tersedia di ${currentDapur.nama}`}
               </p>
             </div>
           </div>
@@ -452,6 +532,23 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
                     </option>
                   ))}
                 </select>
+
+                {satuan === 'Lainnya' && (
+                  <div className="mt-2 animate-fadeIn">
+                    <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1">
+                      Ketik Satuan Custom *
+                    </label>
+                    <input
+                      type="text"
+                      data-testid="input-satuan-custom"
+                      required
+                      value={customSatuan}
+                      onChange={(e) => setCustomSatuan(e.target.value)}
+                      placeholder="Contoh: Lusin, Roll, Rim, Meter, Box..."
+                      className="w-full text-xs font-bold px-3 py-2 bg-blue-50/50 border border-blue-400 rounded-xl text-blue-950 focus:bg-white focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -460,7 +557,7 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
               <div className="flex items-center justify-between text-xs font-bold text-gray-700">
                 <span>Rincian Fisik Saat Ini</span>
                 <span className={`text-[11px] font-semibold ${isConditionBalanced ? 'text-emerald-700' : 'text-red-600 font-bold'}`}>
-                  Terhitung: {totalKondisiFisik} dari {jumlahBarang} {satuan}
+                  Terhitung: {totalKondisiFisik} dari {jumlahBarang} {satuan === 'Lainnya' ? (customSatuan || 'Satuan Custom') : satuan}
                 </span>
               </div>
 
@@ -531,7 +628,11 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-bold transition-all shadow-xs cursor-pointer min-h-[42px] disabled:opacity-50"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>{isSubmitting ? 'Menyimpan Aset...' : 'Simpan Aset ke Dapur'}</span>
+              <span>
+                {isSubmitting 
+                  ? 'Menyimpan Aset...' 
+                  : (itemToEdit ? 'Simpan Perubahan Aset' : 'Simpan Aset ke Dapur')}
+              </span>
             </button>
           </div>
 
