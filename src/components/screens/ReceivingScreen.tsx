@@ -32,7 +32,8 @@ import {
   uploadPhotoToGoogleDrive, 
   generateBahanPhotoFileName, 
   GDRIVE_BAHAN_FOLDER_URL,
-  getDriveDirectImageUrl
+  getDriveDirectImageUrl,
+  compressImageFile
 } from '../../utils/googleDrive';
 
 // Quick recommendation chips for retur reasons
@@ -43,6 +44,8 @@ const quickReturReasons = [
   'Timbangan susut berlebih',
   'Salah spesifikasi komoditas'
 ];
+
+const STORAGE_KEY_RCV_DRAFT = 'pic_mobile_receiving_draft_v1';
 
 interface ReceivingScreenProps {
   currentDapur: Dapur;
@@ -102,19 +105,88 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
   const [isUploadingPhoto, setIsUploadingPhoto] = useState<boolean>(false);
   const [photoUploadNotice, setPhotoUploadNotice] = useState<string | null>(null);
 
+  // Restore draft if available (protects against browser reload during camera photo capture)
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_RCV_DRAFT);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.namaBahanBaku !== undefined) setNamaBahanBaku(parsed.namaBahanBaku);
+        if (parsed.namaSupplier !== undefined) setNamaSupplier(parsed.namaSupplier);
+        if (parsed.jumlahSampai !== undefined) setJumlahSampai(parsed.jumlahSampai);
+        if (parsed.satuan !== undefined) setSatuan(parsed.satuan);
+        if (parsed.adaRetur !== undefined) setAdaRetur(parsed.adaRetur);
+        if (parsed.jumlahRetur !== undefined) setJumlahRetur(parsed.jumlahRetur);
+        if (parsed.alasanRetur !== undefined) setAlasanRetur(parsed.alasanRetur);
+        if (parsed.jamSampaiRetur !== undefined) setJamSampaiRetur(parsed.jamSampaiRetur);
+        if (parsed.suhuCelsius !== undefined) setSuhuCelsius(parsed.suhuCelsius);
+        if (parsed.catatan !== undefined) setCatatan(parsed.catatan);
+        if (Array.isArray(parsed.photos)) setPhotos(parsed.photos);
+        if (parsed.tanggalMenu) setTanggalMenu(parsed.tanggalMenu);
+      }
+    } catch {
+      // ignore
+    }
+    setDraftLoaded(true);
+  }, []);
+
+  // Persist draft on changes
+  useEffect(() => {
+    if (!draftLoaded) return;
+    try {
+      const draft = {
+        namaBahanBaku,
+        namaSupplier,
+        jumlahSampai,
+        satuan,
+        adaRetur,
+        jumlahRetur,
+        alasanRetur,
+        jamSampaiRetur,
+        suhuCelsius,
+        catatan,
+        photos,
+        tanggalMenu
+      };
+      localStorage.setItem(STORAGE_KEY_RCV_DRAFT, JSON.stringify(draft));
+    } catch {
+      // ignore
+    }
+  }, [
+    draftLoaded,
+    namaBahanBaku,
+    namaSupplier,
+    jumlahSampai,
+    satuan,
+    adaRetur,
+    jumlahRetur,
+    alasanRetur,
+    jamSampaiRetur,
+    suhuCelsius,
+    catatan,
+    photos,
+    tanggalMenu
+  ]);
+
   // Feed filter (tanggal terpilih vs semua)
   const [feedFilter, setFeedFilter] = useState<'terpilih' | 'semua'>('terpilih');
 
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = cameraInputRef;
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    // Reset both file inputs
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+    }
+    if (galleryInputRef.current) {
+      galleryInputRef.current.value = '';
     }
 
     // Auto-generate standardized file name
@@ -144,15 +216,14 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
         setPhotoUploadNotice(`Tersimpan di Google Drive (${autoFileName})`);
       }
     } catch (err: any) {
-      console.warn('Google Drive direct upload fallback to local base64 preview:', err);
-      // Fallback to local base64 so user is never blocked in field
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setPhotos(prev => [...prev, event.target!.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
+      console.warn('Google Drive direct upload fallback to local compressed base64 preview:', err);
+      // Fallback to local compressed base64 so user is never blocked and storage is safe
+      try {
+        const { base64 } = await compressImageFile(file);
+        setPhotos(prev => [...prev, base64]);
+      } catch {
+        // ignore
+      }
       setPhotoUploadNotice(`Tersimpan lokal (${autoFileName})`);
     } finally {
       setIsUploadingPhoto(false);
@@ -219,6 +290,12 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
     setPhotos([]);
     setJamSampai(getCurrentTimeString());
     setTanggalMenu(tomorrowStr);
+
+    try {
+      localStorage.removeItem(STORAGE_KEY_RCV_DRAFT);
+    } catch {
+      // ignore
+    }
 
     setTimeout(() => {
       setFeedbackSuccess(null);
@@ -540,35 +617,69 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
             </div>
           )}
 
+          {/* Native Camera input */}
           <input
             id="input-upload-foto"
-            name="upload_foto"
+            name="camera_foto"
             type="file"
-            ref={fileInputRef}
+            ref={cameraInputRef}
             accept="image/*"
             capture="environment"
             onChange={handlePhotoUpload}
             className="hidden"
-            aria-label="Upload Foto Bukti"
+            aria-label="Ambil Foto Kamera"
+          />
+
+          {/* Photo Gallery input */}
+          <input
+            id="input-gallery-foto"
+            name="gallery_foto"
+            type="file"
+            ref={galleryInputRef}
+            accept="image/*"
+            onChange={handlePhotoUpload}
+            className="hidden"
+            aria-label="Pilih Foto dari Galeri"
           />
 
           <div className="flex items-center gap-2 overflow-x-auto py-1">
-            {/* Take Photo Button */}
+            {/* Take Photo Button (Kamera) */}
             <button
               type="button"
               disabled={isUploadingPhoto}
-              onClick={() => fileInputRef.current?.click()}
-              className={`w-16 h-16 rounded-xl border border-dashed border-gray-400 bg-gray-50 hover:bg-gray-100 flex flex-col items-center justify-center gap-1 text-gray-600 transition-colors shrink-0 cursor-pointer min-h-[48px] ${
+              onClick={() => cameraInputRef.current?.click()}
+              className={`w-16 h-16 rounded-xl border border-dashed border-sky-400 bg-sky-50/80 hover:bg-sky-100 flex flex-col items-center justify-center gap-1 text-sky-800 transition-colors shrink-0 cursor-pointer min-h-[48px] ${
                 isUploadingPhoto ? 'opacity-50 cursor-wait' : ''
               }`}
+              title="Ambil foto langsung dengan kamera HP"
             >
               {isUploadingPhoto ? (
-                <Loader2 className="w-5 h-5 animate-spin text-sky-600" />
+                <Loader2 className="w-4 h-4 animate-spin text-sky-600" />
               ) : (
-                <Camera className="w-5 h-5 text-gray-700" />
+                <Camera className="w-4 h-4 text-sky-700" />
               )}
               <span className="text-[9px] font-bold">
                 {isUploadingPhoto ? 'Unggah...' : 'Kamera'}
+              </span>
+            </button>
+
+            {/* Choose from Gallery Button (Galeri) */}
+            <button
+              type="button"
+              disabled={isUploadingPhoto}
+              onClick={() => galleryInputRef.current?.click()}
+              className={`w-16 h-16 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/80 hover:bg-emerald-100 flex flex-col items-center justify-center gap-1 text-emerald-800 transition-colors shrink-0 cursor-pointer min-h-[48px] ${
+                isUploadingPhoto ? 'opacity-50 cursor-wait' : ''
+              }`}
+              title="Pilih foto bukti dari galeri album HP"
+            >
+              {isUploadingPhoto ? (
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+              ) : (
+                <ImageIcon className="w-4 h-4 text-emerald-700" />
+              )}
+              <span className="text-[9px] font-bold">
+                {isUploadingPhoto ? 'Unggah...' : 'Galeri'}
               </span>
             </button>
 

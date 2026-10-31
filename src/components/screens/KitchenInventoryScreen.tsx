@@ -103,15 +103,28 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
               const filtered = (all as InventarisItem[]).filter(
                 x => x.dapur_id === currentDapur.id || 
                      x.dapur_nama === currentDapur.nama ||
-                     x.dapur_id === 'gudang_pusat' ||
-                     (currentDapur.id === 'd-1790646298017' && x.dapur_nama?.includes('Bisukma'))
+                     (currentDapur.id === 'd-1790646298017' && (
+                       x.dapur_nama === 'Dapur Dummy' || 
+                       x.dapur_nama?.includes('Simamora Tarutung') || 
+                       x.dapur_nama?.includes('Bisukma')
+                     ))
               );
               setInventarisItems(filtered);
               setIsLoading(false);
             })
             .catch(() => setIsLoading(false));
         } else {
-          setInventarisItems(items);
+          // Strictly filter to current dapur only
+          const filtered = items.filter(
+            x => x.dapur_id === currentDapur.id || 
+                 x.dapur_nama === currentDapur.nama ||
+                 (currentDapur.id === 'd-1790646298017' && (
+                   x.dapur_nama === 'Dapur Dummy' || 
+                   x.dapur_nama?.includes('Simamora Tarutung') || 
+                   x.dapur_nama?.includes('Bisukma')
+                 ))
+          );
+          setInventarisItems(filtered);
           setIsLoading(false);
         }
       }, () => {

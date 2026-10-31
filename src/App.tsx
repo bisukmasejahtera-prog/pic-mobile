@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { TabType, Dapur, PenerimaanBahanItem, LaporanKendalaDapur } from './types';
 import { MOCK_DAPURS, MOCK_VENDORS, MOCK_KOMODITAS, INITIAL_PENERIMAAN_BAHAN } from './data/mockData';
 import { HeaderAppBar } from './components/layout/HeaderAppBar';
@@ -23,9 +23,28 @@ const STORAGE_KEY_AUTH = 'pic_mobile_auth_v1';
 const STORAGE_KEY_DATE = 'pic_mobile_selected_date_v1';
 const STORAGE_KEY_ALL_DAPURS = 'pic_mobile_all_dapurs_v1';
 const STORAGE_KEY_LAPORAN = 'pic_mobile_laporan_dapur_v1';
+const STORAGE_KEY_ACTIVE_TAB = 'pic_mobile_active_tab_v1';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('beranda');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_ACTIVE_TAB);
+      if (saved && ['beranda', 'penerimaan', 'riwayat', 'cek_mutu', 'inventaris', 'laporan_dapur', 'akun'].includes(saved)) {
+        return saved as TabType;
+      }
+    } catch {
+      // ignore
+    }
+    return 'beranda';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_ACTIVE_TAB, activeTab);
+    } catch {
+      // ignore
+    }
+  }, [activeTab]);
   
   // All Dapurs state loaded from cache or MOCK_DAPURS, enriched live from Firestore
   const [allDapurs, setAllDapurs] = useState<Dapur[]>(() => {
@@ -403,6 +422,39 @@ export const App: React.FC = () => {
     }
   };
 
+  // Strictly filter items so each PIC only views data for their assigned kitchen
+  const filteredPenerimaanItems = useMemo(() => {
+    return penerimaanItems.filter(item => {
+      if (!currentDapur) return false;
+      if (item.dapur_id === currentDapur.id || item.dapur_nama === currentDapur.nama) {
+        return true;
+      }
+      if (currentDapur.id === 'd-1790646298017') {
+        return item.dapur_id === 'd-1790646298017' || 
+               item.dapur_nama === 'Dapur Dummy' || 
+               item.dapur_nama?.includes('Simamora Tarutung') ||
+               item.dapur_nama?.includes('Bisukma I');
+      }
+      return false;
+    });
+  }, [penerimaanItems, currentDapur]);
+
+  const filteredLaporanItems = useMemo(() => {
+    return laporanItems.filter(item => {
+      if (!currentDapur) return false;
+      if (item.dapur_id === currentDapur.id || item.dapur_nama === currentDapur.nama) {
+        return true;
+      }
+      if (currentDapur.id === 'd-1790646298017') {
+        return item.dapur_id === 'd-1790646298017' || 
+               item.dapur_nama === 'Dapur Dummy' || 
+               item.dapur_nama?.includes('Simamora Tarutung') ||
+               item.dapur_nama?.includes('Bisukma I');
+      }
+      return false;
+    });
+  }, [laporanItems, currentDapur]);
+
   // If not logged in, render dedicated LoginScreen
   if (!currentUser) {
     return (
@@ -456,8 +508,8 @@ export const App: React.FC = () => {
             <HomeScreen
               currentDapur={currentDapur}
               selectedDate={selectedDate}
-              penerimaanItems={penerimaanItems}
-              laporanItems={laporanItems}
+              penerimaanItems={filteredPenerimaanItems}
+              laporanItems={filteredLaporanItems}
               onNavigateTab={setActiveTab}
               onOpenItemDetail={setSelectedItemForDetail}
             />
@@ -470,7 +522,7 @@ export const App: React.FC = () => {
               selectedDate={selectedDate}
               vendors={MOCK_VENDORS}
               availableKomoditas={MOCK_KOMODITAS}
-              penerimaanItems={penerimaanItems}
+              penerimaanItems={filteredPenerimaanItems}
               onSaveBahanItem={handleSaveBahanItem}
               onDeleteBahanItem={handleDeleteBahanItem}
               onNavigateTab={setActiveTab}
@@ -480,8 +532,8 @@ export const App: React.FC = () => {
           {(activeTab === 'riwayat' || activeTab === 'cek_mutu') && (
             <HistoryScreen
               currentDapur={currentDapur}
-              penerimaanItems={penerimaanItems}
-              laporanItems={laporanItems}
+              penerimaanItems={filteredPenerimaanItems}
+              laporanItems={filteredLaporanItems}
               selectedDate={selectedDate}
               onOpenItemDetail={setSelectedItemForDetail}
             />
@@ -503,7 +555,7 @@ export const App: React.FC = () => {
             <KitchenDiscrepancyScreen
               currentDapur={currentDapur}
               picName={currentUser.name}
-              laporanItems={laporanItems}
+              laporanItems={filteredLaporanItems}
               onSaveLaporan={handleSaveLaporan}
               prefillAlatNama={kendalaPrefillAlat}
               onClearPrefillAlat={() => setKendalaPrefillAlat(null)}
@@ -523,8 +575,8 @@ export const App: React.FC = () => {
         <BottomNavBar
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          pendingReceivingCount={penerimaanItems.filter(i => i.ada_retur && !i.jam_sampai_retur).length}
-          pendingLaporanCount={laporanItems.filter(i => i.status === 'pending').length}
+          pendingReceivingCount={filteredPenerimaanItems.filter(i => i.ada_retur && !i.jam_sampai_retur).length}
+          pendingLaporanCount={filteredLaporanItems.filter(i => i.status === 'pending').length}
         />
       </div>
 

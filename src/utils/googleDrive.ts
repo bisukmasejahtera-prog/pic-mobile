@@ -76,8 +76,81 @@ export function blobToBase64(blob: Blob | File): Promise<string> {
 }
 
 /**
+ * Client-side Canvas Image Compression
+ * Scales high-resolution mobile camera photos (e.g. 12MP-48MP, 5-15MB) down to max 1280px
+ * and compresses to JPEG ~250KB. Prevents Android Low Memory Killer crashes,
+ * avoids memory spikes, and ensures fast reliable uploads.
+ */
+export async function compressImageFile(
+  file: File | Blob,
+  maxWidth: number = 1280,
+  maxHeight: number = 1280,
+  quality: number = 0.8
+): Promise<{ blob: Blob; base64: string }> {
+  if (typeof window === 'undefined' || (file.type && !file.type.startsWith('image/'))) {
+    const base64 = await blobToBase64(file);
+    return { blob: file, base64 };
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      let { width, height } = img;
+
+      // Maintain aspect ratio within bounding box
+      if (width > maxWidth || height > maxHeight) {
+        if (width / height > maxWidth / maxHeight) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        } else {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, width);
+      canvas.height = Math.max(1, height);
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        blobToBase64(file).then(base64 => resolve({ blob: file, base64 }));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      const base64 = canvas.toDataURL('image/jpeg', quality);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            blobToBase64(file).then(b64 => resolve({ blob: file, base64: b64 }));
+            return;
+          }
+          resolve({ blob, base64 });
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      blobToBase64(file).then(base64 => resolve({ blob: file, base64 }));
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+/**
  * Direct Upload to Google Drive via Google Apps Script Webhook
- * Zero Google OAuth popup required for kitchen staff in the field
+ * Zero Google OAuth popup required for kitchen staff in the field.
+ * Automatically compresses images before sending to prevent payload limits and memory kill.
  */
 export async function uploadPhotoToGoogleDrive(
   fileBlob: Blob | File,
@@ -89,7 +162,8 @@ export async function uploadPhotoToGoogleDrive(
     throw new Error('Google Apps Script Webhook URL belum terkonfigurasi di sistem.');
   }
 
-  const base64Data = await blobToBase64(fileBlob);
+  // Automatic client-side compression prevents payload overflow & memory crashes
+  const { blob: compressedBlob, base64: base64Data } = await compressImageFile(fileBlob);
 
   const response = await fetch(APPS_SCRIPT_WEBHOOK_URL, {
     method: 'POST',
@@ -100,7 +174,7 @@ export async function uploadPhotoToGoogleDrive(
       base64Data,
       fileName,
       folderId,
-      mimeType: fileBlob.type || 'image/jpeg',
+      mimeType: compressedBlob.type || 'image/jpeg',
       description
     }),
     redirect: 'follow'

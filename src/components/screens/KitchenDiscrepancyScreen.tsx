@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   AlertTriangle, 
   Plus, 
@@ -19,12 +19,18 @@ import {
   Layers,
   Sparkles,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Dapur, LaporanKendalaDapur, KategoriKendala, TingkatUrgensi, StatusKendala } from '../../types';
 import { formatDateIndo } from '../../utils/dateUtils';
-import { uploadPhotoToGoogleDrive, GDRIVE_KENDALA_FOLDER_ID, GDRIVE_KENDALA_FOLDER_URL } from '../../utils/googleDrive';
-import { getDriveDirectImageUrl } from '../../utils/googleDrive';
+import { 
+  uploadPhotoToGoogleDrive, 
+  GDRIVE_KENDALA_FOLDER_ID, 
+  GDRIVE_KENDALA_FOLDER_URL,
+  getDriveDirectImageUrl,
+  compressImageFile
+} from '../../utils/googleDrive';
 
 interface KitchenDiscrepancyScreenProps {
   currentDapur: Dapur;
@@ -111,6 +117,8 @@ const STATUS_CONFIG: Record<StatusKendala, { label: string; badgeClass: string }
   }
 };
 
+const STORAGE_KEY_DISCREPANCY_DRAFT = 'pic_mobile_kendala_draft_v1';
+
 export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> = ({
   currentDapur,
   picName = 'Petugas PIC',
@@ -122,18 +130,6 @@ export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> =
 }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedLaporanForDetail, setSelectedLaporanForDetail] = useState<LaporanKendalaDapur | null>(null);
-
-  // Auto open form when redirected from Inventaris with a broken equipment
-  React.useEffect(() => {
-    if (prefillAlatNama) {
-      setFormKategori('kerusakan_alat');
-      setFormUrgensi('sedang');
-      setFormJudul(`Kerusakan Alat: ${prefillAlatNama}`);
-      setFormDeskripsi(`Peralatan ${prefillAlatNama} mengalami kendala saat inspeksi rutin mingguan.`);
-      setShowCreateModal(true);
-      if (onClearPrefillAlat) onClearPrefillAlat();
-    }
-  }, [prefillAlatNama, onClearPrefillAlat]);
 
   // Filters
   const [filterKategori, setFilterKategori] = useState<string>('semua');
@@ -151,7 +147,78 @@ export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> =
   const [formPhotos, setFormPhotos] = useState<string[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = cameraInputRef;
+
+  // Restore draft if available
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_DISCREPANCY_DRAFT);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.showCreateModal) setShowCreateModal(true);
+        if (parsed.formKategori) setFormKategori(parsed.formKategori);
+        if (parsed.formUrgensi) setFormUrgensi(parsed.formUrgensi);
+        if (parsed.formJudul !== undefined) setFormJudul(parsed.formJudul);
+        if (parsed.formDeskripsi !== undefined) setFormDeskripsi(parsed.formDeskripsi);
+        if (parsed.formTindakan !== undefined) setFormTindakan(parsed.formTindakan);
+        if (parsed.formBiaya !== undefined) setFormBiaya(parsed.formBiaya);
+        if (Array.isArray(parsed.formPhotos)) setFormPhotos(parsed.formPhotos);
+      }
+    } catch {
+      // ignore
+    }
+    setDraftLoaded(true);
+  }, []);
+
+  // Save draft whenever modal content changes
+  useEffect(() => {
+    if (!draftLoaded) return;
+    try {
+      if (showCreateModal) {
+        const draft = {
+          showCreateModal: true,
+          formKategori,
+          formUrgensi,
+          formJudul,
+          formDeskripsi,
+          formTindakan,
+          formBiaya,
+          formPhotos
+        };
+        localStorage.setItem(STORAGE_KEY_DISCREPANCY_DRAFT, JSON.stringify(draft));
+      } else {
+        localStorage.removeItem(STORAGE_KEY_DISCREPANCY_DRAFT);
+      }
+    } catch {
+      // ignore
+    }
+  }, [
+    draftLoaded,
+    showCreateModal,
+    formKategori,
+    formUrgensi,
+    formJudul,
+    formDeskripsi,
+    formTindakan,
+    formBiaya,
+    formPhotos
+  ]);
+
+  // Auto open form when redirected from Inventaris with a broken equipment
+  useEffect(() => {
+    if (prefillAlatNama) {
+      setFormKategori('kerusakan_alat');
+      setFormUrgensi('sedang');
+      setFormJudul(`Kerusakan Alat: ${prefillAlatNama}`);
+      setFormDeskripsi(`Peralatan ${prefillAlatNama} mengalami kendala saat inspeksi rutin mingguan.`);
+      setShowCreateModal(true);
+      if (onClearPrefillAlat) onClearPrefillAlat();
+    }
+  }, [prefillAlatNama, onClearPrefillAlat]);
 
   // Filtered reports
   const filteredItems = laporanItems.filter(item => {
@@ -177,8 +244,11 @@ export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> =
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+    }
+    if (galleryInputRef.current) {
+      galleryInputRef.current.value = '';
     }
 
     const timeStr = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
@@ -197,16 +267,29 @@ export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> =
         setFormPhotos(prev => [...prev, finalUrl]);
       }
     } catch {
-      // Local preview fallback
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setFormPhotos(prev => [...prev, event.target!.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
+      // Local preview fallback with canvas compression to protect memory
+      try {
+        const { base64 } = await compressImageFile(file);
+        setFormPhotos(prev => [...prev, base64]);
+      } catch {
+        // ignore
+      }
     } finally {
       setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleCloseCreateModal = () => {
+    setShowCreateModal(false);
+    setFormJudul('');
+    setFormDeskripsi('');
+    setFormTindakan('');
+    setFormBiaya('');
+    setFormPhotos([]);
+    try {
+      localStorage.removeItem(STORAGE_KEY_DISCREPANCY_DRAFT);
+    } catch {
+      // ignore
     }
   };
 
@@ -241,13 +324,18 @@ export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> =
 
     try {
       await onSaveLaporan(newLaporan);
-      // Reset form
+      // Reset form and clear draft
       setFormJudul('');
       setFormDeskripsi('');
       setFormTindakan('');
       setFormBiaya('');
       setFormPhotos([]);
       setShowCreateModal(false);
+      try {
+        localStorage.removeItem(STORAGE_KEY_DISCREPANCY_DRAFT);
+      } catch {
+        // ignore
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -517,7 +605,7 @@ export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> =
 
               <button
                 type="button"
-                onClick={() => setShowCreateModal(false)}
+                onClick={handleCloseCreateModal}
                 className="w-8 h-8 rounded-xl hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -656,24 +744,52 @@ export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> =
                     </div>
                   ))}
 
+                  {/* Native Camera input */}
                   <input
-                    ref={fileInputRef}
+                    ref={cameraInputRef}
                     type="file"
                     accept="image/*"
                     capture="environment"
                     onChange={handlePhotoUpload}
                     className="hidden"
+                    aria-label="Ambil Foto Kamera"
                   />
 
+                  {/* Photo Gallery input */}
+                  <input
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    aria-label="Pilih Foto dari Galeri"
+                  />
+
+                  {/* Tombol Kamera */}
                   <button
                     type="button"
                     disabled={isUploadingPhoto}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 hover:border-gray-400 flex flex-col items-center justify-center gap-1 text-gray-500 cursor-pointer transition-colors"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="w-16 h-16 rounded-xl border-2 border-dashed border-sky-300 bg-sky-50/80 hover:bg-sky-100 flex flex-col items-center justify-center gap-1 text-sky-700 cursor-pointer transition-colors"
+                    title="Ambil foto langsung dengan kamera"
                   >
-                    <Camera className="w-4 h-4 text-gray-400" />
+                    <Camera className="w-4 h-4 text-sky-600" />
                     <span className="text-[9px] font-bold">
-                      {isUploadingPhoto ? '...' : '+ Foto'}
+                      {isUploadingPhoto ? '...' : 'Kamera'}
+                    </span>
+                  </button>
+
+                  {/* Tombol Galeri */}
+                  <button
+                    type="button"
+                    disabled={isUploadingPhoto}
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="w-16 h-16 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/80 hover:bg-emerald-100 flex flex-col items-center justify-center gap-1 text-emerald-700 cursor-pointer transition-colors"
+                    title="Pilih foto dari galeri HP"
+                  >
+                    <ImageIcon className="w-4 h-4 text-emerald-600" />
+                    <span className="text-[9px] font-bold">
+                      {isUploadingPhoto ? '...' : 'Galeri'}
                     </span>
                   </button>
                 </div>
@@ -698,7 +814,7 @@ export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> =
               <div className="pt-2 flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={handleCloseCreateModal}
                   className="flex-1 py-3 px-3 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-colors cursor-pointer min-h-[48px]"
                 >
                   Batal
