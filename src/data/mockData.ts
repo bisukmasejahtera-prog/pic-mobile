@@ -2,14 +2,6 @@ import { Dapur, Vendor, Komoditas, PenerimaanBatch, PenerimaanBahanItem } from '
 
 export const MOCK_DAPURS: Dapur[] = [
   {
-    id: 'd-1790646298017',
-    nama: 'Dapur Dummy',
-    kode_bgn: 'SPPG-DUMMY-01',
-    alamat: 'Jl. Sesama',
-    is_ud_yayasan_hub: false,
-    vendor_default_id: 'vnd-ud-bisukma'
-  },
-  {
     id: 'd-1',
     nama: 'Dapur Bisukma I Tarutung',
     kode_bgn: 'SPPG-TRT-001',

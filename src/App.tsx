@@ -14,7 +14,7 @@ import { BahanDetailModal } from './components/modules/BahanDetailModal';
 import { CheckCircle2 } from 'lucide-react';
 import { getTodayDateStr, getDateStatusLabel } from './utils/dateUtils';
 import { db, saveDocument, deleteDocument, getCollectionDocs } from './lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 
 const STORAGE_KEY_ITEMS = 'pic_mobile_bahan_items_v1';
 const STORAGE_KEY_DAPUR = 'pic_mobile_dapur_v1';
@@ -54,8 +54,8 @@ export const App: React.FC = () => {
     } catch {
       // ignore
     }
-    // Default fallback to Dapur Dummy if found, else first kitchen
-    return MOCK_DAPURS.find(d => d.id === 'd-1790646298017') || MOCK_DAPURS[0];
+    // Default fallback to first kitchen
+    return MOCK_DAPURS[0];
   });
 
   // Operational Date State with persistence
@@ -87,19 +87,39 @@ export const App: React.FC = () => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_ITEMS);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(i => 
+            i && 
+            !i.id?.startsWith('dummy-') && 
+            i.id !== 'RCV-ITM-01' && 
+            i.id !== 'RCV-ITM-02' &&
+            i.dapur_nama !== 'Dapur Dummy' &&
+            i.dapur_id !== 'd-1790646298017'
+          );
+        }
       }
     } catch {
       // ignore
     }
-    return INITIAL_PENERIMAAN_BAHAN;
+    return [];
   });
 
   // Laporan Kendala Dapur Items State with persistence
   const [laporanItems, setLaporanItems] = useState<LaporanKendalaDapur[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_LAPORAN);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(k => 
+            k && 
+            !k.id?.startsWith('dummy-') && 
+            k.dapur_nama !== 'Dapur Dummy' && 
+            k.dapur_id !== 'd-1790646298017'
+          );
+        }
+      }
     } catch {
       // ignore
     }
@@ -109,69 +129,82 @@ export const App: React.FC = () => {
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<PenerimaanBahanItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Sync live data from Firestore collection 'penerimaan_bahan' on mount
+  // Sync live data from Firestore collection 'penerimaan_bahan' in real-time
   useEffect(() => {
     let isMounted = true;
-    getCollectionDocs('penerimaan_bahan')
-      .then((docs) => {
+    try {
+      const unsub = onSnapshot(collection(db, 'penerimaan_bahan'), (snap) => {
         if (!isMounted) return;
-        if (Array.isArray(docs)) {
-          // Filter out any legacy dummy mock items
-          const realItems = (docs as PenerimaanBahanItem[]).filter(item => 
+        if (snap.empty) {
+          setPenerimaanItems([]);
+          try {
+            localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify([]));
+          } catch {}
+          return;
+        }
+
+        const realItems = snap.docs
+          .map(d => ({ id: d.id, ...d.data() } as PenerimaanBahanItem))
+          .filter(item => 
             item && 
             !item.id?.startsWith('dummy-') && 
             item.id !== 'RCV-ITM-01' && 
-            item.id !== 'RCV-ITM-02'
+            item.id !== 'RCV-ITM-02' &&
+            item.dapur_nama !== 'Dapur Dummy' &&
+            item.dapur_id !== 'd-1790646298017'
           );
 
-          realItems.sort((a, b) => {
-            const timeA = new Date(a.created_at || a.tanggal).getTime();
-            const timeB = new Date(b.created_at || b.tanggal).getTime();
-            return timeB - timeA;
-          });
+        realItems.sort((a, b) => {
+          const timeA = new Date(a.created_at || a.tanggal).getTime();
+          const timeB = new Date(b.created_at || b.tanggal).getTime();
+          return timeB - timeA;
+        });
 
-          setPenerimaanItems(realItems);
-          try {
-            localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(realItems));
-          } catch {
-            // ignore
-          }
-        }
-      })
-      .catch((err) => {
-        console.warn('Sync Firestore on load fallback:', err);
+        setPenerimaanItems(realItems);
+        try {
+          localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(realItems));
+        } catch {}
+      }, (err) => {
+        console.warn('Realtime penerimaan_bahan listener warning:', err);
       });
 
-    return () => {
-      isMounted = false;
-    };
+      return () => unsub();
+    } catch (err) {
+      console.warn('Firestore onSnapshot error:', err);
+    }
   }, []);
 
-  // Sync live data from Firestore collection 'laporan_kendala_dapur' on mount
+  // Sync live data from Firestore collection 'laporan_kendala_dapur' in real-time
   useEffect(() => {
     let isMounted = true;
-    getCollectionDocs('laporan_kendala_dapur')
-      .then((docs) => {
+    try {
+      const unsub = onSnapshot(collection(db, 'laporan_kendala_dapur'), (snap) => {
         if (!isMounted) return;
-        if (Array.isArray(docs)) {
-          const list = (docs as LaporanKendalaDapur[]).sort((a, b) => 
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-          setLaporanItems(list);
+        if (snap.empty) {
+          setLaporanItems([]);
           try {
-            localStorage.setItem(STORAGE_KEY_LAPORAN, JSON.stringify(list));
-          } catch {
-            // ignore
-          }
+            localStorage.setItem(STORAGE_KEY_LAPORAN, JSON.stringify([]));
+          } catch {}
+          return;
         }
-      })
-      .catch((err) => {
-        console.warn('Sync Firestore laporan_kendala_dapur fallback:', err);
+
+        const list = snap.docs
+          .map(d => ({ id: d.id, ...d.data() } as LaporanKendalaDapur))
+          .filter(k => k && k.dapur_nama !== 'Dapur Dummy' && k.dapur_id !== 'd-1790646298017')
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        setLaporanItems(list);
+        try {
+          localStorage.setItem(STORAGE_KEY_LAPORAN, JSON.stringify(list));
+        } catch {}
+      }, (err) => {
+        console.warn('Realtime laporan_kendala_dapur listener warning:', err);
       });
 
-    return () => {
-      isMounted = false;
-    };
+      return () => unsub();
+    } catch (err) {
+      console.warn('Firestore onSnapshot error:', err);
+    }
   }, []);
 
   // Fetch and enrich dapurs list from Firestore collection 'dapurs' on mount

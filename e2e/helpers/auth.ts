@@ -20,9 +20,23 @@ export const MOCK_DAPUR_TARUTUNG = {
 };
 
 /**
+ * Intercept Firestore network requests so e2e tests never pollute production database
+ */
+export async function mockFirestoreNetwork(page: Page) {
+  await page.route('**/firestore.googleapis.com/**', route => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([])
+    });
+  });
+}
+
+/**
  * Setup authenticated session before loading PIC-Mobile.
  */
 export async function setupAuthenticatedPic(page: Page, user: MockPicUser = DEFAULT_MOCK_PIC_USER) {
+  await mockFirestoreNetwork(page);
   await page.addInitScript(({ u, d }) => {
     window.localStorage.setItem('pic_mobile_auth_v1', JSON.stringify(u));
     window.localStorage.setItem('pic_mobile_dapur_v1', JSON.stringify(d));
@@ -33,6 +47,7 @@ export async function setupAuthenticatedPic(page: Page, user: MockPicUser = DEFA
  * Clear all localStorage to start with a pristine state (Login screen).
  */
 export async function clearPicStorage(page: Page) {
+  await mockFirestoreNetwork(page);
   await page.addInitScript(() => {
     window.localStorage.clear();
   });
