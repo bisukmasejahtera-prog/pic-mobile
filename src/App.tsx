@@ -428,6 +428,7 @@ export const App: React.FC = () => {
               currentDapur={currentDapur}
               selectedDate={selectedDate}
               penerimaanItems={penerimaanItems}
+              laporanItems={laporanItems}
               onNavigateTab={setActiveTab}
               onOpenItemDetail={setSelectedItemForDetail}
             />
@@ -449,7 +450,9 @@ export const App: React.FC = () => {
 
           {(activeTab === 'riwayat' || activeTab === 'cek_mutu') && (
             <HistoryScreen
+              currentDapur={currentDapur}
               penerimaanItems={penerimaanItems}
+              laporanItems={laporanItems}
               selectedDate={selectedDate}
               onOpenItemDetail={setSelectedItemForDetail}
             />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   History, 
   Search, 
@@ -7,6 +7,7 @@ import {
   FileSpreadsheet, 
   Calendar, 
   ChevronRight, 
+  ChevronDown,
   CheckCircle2, 
   Clock,
   RotateCcw,
@@ -14,19 +15,25 @@ import {
   Thermometer,
   Camera,
   AlertTriangle,
-  RotateCw
+  RotateCw,
+  Download
 } from 'lucide-react';
-import { PenerimaanBahanItem } from '../../types';
+import { PenerimaanBahanItem, LaporanKendalaDapur, Dapur } from '../../types';
 import { getTodayDateStr, getYesterdayDateStr, formatDateIndo } from '../../utils/dateUtils';
+import { exportPenerimaanToExcel, exportKendalaToExcel, exportAllToExcel } from '../../utils/excelExport';
 
 interface HistoryScreenProps {
+  currentDapur?: Dapur;
   penerimaanItems: PenerimaanBahanItem[];
+  laporanItems?: LaporanKendalaDapur[];
   selectedDate?: string;
   onOpenItemDetail?: (item: PenerimaanBahanItem) => void;
 }
 
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({
+  currentDapur,
   penerimaanItems,
+  laporanItems = [],
   selectedDate,
   onOpenItemDetail
 }) => {
@@ -36,6 +43,19 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   const [activeFilter, setActiveFilter] = useState<'all' | 'cold' | 'retur'>('all');
   const [filterReturOnly, setFilterReturOnly] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>('all');
+  const [isExporting, setIsExporting] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const coldChainItems = penerimaanItems.filter(x => x.suhu_celsius !== undefined);
   const returItems = penerimaanItems.filter(x => x.ada_retur);
@@ -60,8 +80,46 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
     return matchSearch && matchRetur && matchDate && matchQC;
   });
 
-  const handleExportExcel = () => {
-    alert(`Mengekspor ${filteredItems.length} data laporan bahan baku ke file Excel (.xlsx)...`);
+  const handleExportPenerimaan = () => {
+    if (filteredItems.length === 0) {
+      alert('Tidak ada data penerimaan bahan baku yang sesuai filter untuk diekspor.');
+      return;
+    }
+    setIsExporting(true);
+    setShowExportMenu(false);
+    try {
+      exportPenerimaanToExcel(filteredItems, currentDapur?.nama || 'Dapur_SPPG');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportKendala = () => {
+    if (!laporanItems || laporanItems.length === 0) {
+      alert('Tidak ada data laporan kendala dapur untuk diekspor.');
+      return;
+    }
+    setIsExporting(true);
+    setShowExportMenu(false);
+    try {
+      exportKendalaToExcel(laporanItems, currentDapur?.nama || 'Dapur_SPPG');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportSemua = () => {
+    if (filteredItems.length === 0 && (!laporanItems || laporanItems.length === 0)) {
+      alert('Tidak ada data penerimaan maupun kendala yang dapat diekspor.');
+      return;
+    }
+    setIsExporting(true);
+    setShowExportMenu(false);
+    try {
+      exportAllToExcel(filteredItems, laporanItems, currentDapur?.nama || 'Dapur_SPPG');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const resetFilters = () => {
@@ -93,14 +151,68 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleExportExcel}
-          className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold transition-all shrink-0 cursor-pointer min-h-[44px]"
-        >
-          <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-          <span>Export Excel (.xlsx)</span>
-        </button>
+        {/* Export Excel Button with Multi-Options */}
+        <div className="relative shrink-0" ref={exportMenuRef}>
+          <div className="inline-flex rounded-xl shadow-xs">
+            <button
+              type="button"
+              data-testid="export-excel-button"
+              onClick={handleExportPenerimaan}
+              disabled={isExporting}
+              className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-l-xl border border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold transition-all shrink-0 cursor-pointer min-h-[44px] disabled:opacity-50"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+              <span>{isExporting ? 'Mengekspor...' : `Export Excel (${filteredItems.length})`}</span>
+            </button>
+            <button
+              type="button"
+              data-testid="export-menu-toggle"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              aria-label="Pilihan format ekspor Excel"
+              disabled={isExporting}
+              className="inline-flex items-center justify-center px-2 py-2.5 rounded-r-xl border-t border-r border-b border-l-0 border-emerald-600 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 text-xs font-bold transition-all cursor-pointer min-h-[44px] disabled:opacity-50"
+            >
+              <ChevronDown className="w-3.5 h-3.5 text-emerald-800" />
+            </button>
+          </div>
+
+          {/* Export Dropdown Menu */}
+          {showExportMenu && (
+            <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-xl border border-gray-200 shadow-lg py-1.5 z-30">
+              <div className="px-3 py-1 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                Opsi Ekspor Spreadsheet
+              </div>
+              <button
+                type="button"
+                data-testid="export-option-penerimaan"
+                onClick={handleExportPenerimaan}
+                className="w-full text-left px-3.5 py-2 text-xs font-semibold text-gray-800 hover:bg-emerald-50 hover:text-emerald-900 flex items-center justify-between"
+              >
+                <span>Penerimaan Bahan Baku</span>
+                <span className="text-[11px] text-gray-400 font-normal">({filteredItems.length})</span>
+              </button>
+              <button
+                type="button"
+                data-testid="export-option-kendala"
+                onClick={handleExportKendala}
+                className="w-full text-left px-3.5 py-2 text-xs font-semibold text-gray-800 hover:bg-emerald-50 hover:text-emerald-900 flex items-center justify-between"
+              >
+                <span>Laporan Kendala Dapur</span>
+                <span className="text-[11px] text-gray-400 font-normal">({laporanItems.length})</span>
+              </button>
+              <div className="border-t border-gray-100 my-1" />
+              <button
+                type="button"
+                data-testid="export-option-semua"
+                onClick={handleExportSemua}
+                className="w-full text-left px-3.5 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 flex items-center justify-between"
+              >
+                <span>Semua Data Terpadu</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900 font-extrabold">2 Sheet</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 3 Metric Pills & QC Filter Tabs */}

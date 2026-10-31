@@ -40,4 +40,19 @@ test.describe('PIC-Mobile Quality Monitoring & History Flow', () => {
     await returCheckbox.check();
     await expect(returCheckbox).toBeChecked();
   });
+
+  test('TC-HIST-03: Export Excel button exists and toggle dropdown shows export choices', async ({ page }) => {
+    await navigateToTab(page, 'riwayat');
+
+    const exportBtn = page.getByTestId('export-excel-button');
+    await expect(exportBtn).toBeVisible();
+
+    const menuToggle = page.getByTestId('export-menu-toggle');
+    await expect(menuToggle).toBeVisible();
+    await menuToggle.click();
+
+    await expect(page.getByTestId('export-option-penerimaan')).toBeVisible();
+    await expect(page.getByTestId('export-option-kendala')).toBeVisible();
+    await expect(page.getByTestId('export-option-semua')).toBeVisible();
+  });
 });

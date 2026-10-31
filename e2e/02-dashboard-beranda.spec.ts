@@ -47,4 +47,12 @@ test.describe('PIC-Mobile Dashboard / Beranda Flow', () => {
       await expect(page.getByText('Laporan Bahan Masuk')).not.toBeVisible();
     }
   });
+
+  test('TC-DASH-05: Displays both received materials feed and kitchen issue reports feed', async ({ page }) => {
+    // Both sections must be present on Beranda
+    await expect(page.getByText('Daftar Bahan Baku yang Diterima')).toBeVisible();
+    await expect(page.getByText('Laporan Kendala Dapur')).toBeVisible();
+    await expect(page.getByTestId('hero-btn-lapor-kendala')).toBeVisible();
+    await expect(page.getByTestId('btn-tambah-kendala-home')).toBeVisible();
+  });
 });

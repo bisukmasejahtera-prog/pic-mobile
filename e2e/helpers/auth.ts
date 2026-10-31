@@ -51,7 +51,7 @@ export async function navigateToTab(page: Page, tab: TabTarget) {
     const mobileLabels: Record<TabTarget, RegExp> = {
       beranda: /Beranda/i,
       penerimaan: /Penerimaan/i,
-      cek_mutu: /Riwayat & Mutu|Cek Mutu/i,
+      cek_mutu: /Riwayat & Mutu|Cek Mutu|Riwayat/i,
       riwayat: /Riwayat & Mutu|Riwayat/i,
       laporan_dapur: /Laporan Dapur|Laporan/i,
       akun: /Akun/i
@@ -62,7 +62,7 @@ export async function navigateToTab(page: Page, tab: TabTarget) {
     const desktopLabels: Record<TabTarget, RegExp> = {
       beranda: /Beranda Ops/i,
       penerimaan: /Penerimaan Bahan/i,
-      cek_mutu: /Riwayat & Mutu|Cek Mutu/i,
+      cek_mutu: /Riwayat & Mutu|Cek Mutu|Riwayat/i,
       riwayat: /Riwayat & Mutu|Riwayat/i,
       laporan_dapur: /Laporan Dapur/i,
       akun: /Akun/i
