@@ -148,20 +148,46 @@ export interface PenerimaanBatch {
 export interface InventarisItem {
   id: string;
   kode_aset?: string;
+  lokasi_sekarang?: 'gudang_pusat' | 'sppg';
   dapur_id: string;
   dapur_nama?: string;
   nama_barang: string;
   spesifikasi?: string;
   kategori?: string;
+  bulan_tahun_pengadaan?: string;
+  tanggal_pembelian?: string;
+  nomor_po_faktur?: string;
+  supplier_toko?: string;
   satuan: string;
+  kuantitas_satuan?: number;
+  konversi_pcs?: number;
   total_kuantitas_pcs: number;
+  harga_satuan_rp?: number;
+  total_harga_rp?: number;
+  status_aset?: string;
+  kode_bast_terakhir?: string;
   kondisi_baik_pcs?: number;
   kondisi_rusak_ringan_pcs?: number;
+  kondisi_rusak_sedang_pcs?: number;
   kondisi_rusak_berat_pcs?: number;
-  status_aset?: string;
+  catatan?: string;
+  created_at?: string;
   last_inspected_at?: string;
   last_inspected_by?: string;
   last_inspected_status?: 'normal' | 'kendala';
+  riwayat_alur?: Array<{
+    id: string;
+    tanggal: string;
+    tipe_event: string;
+    judul: string;
+    deskripsi: string;
+    aktor_nama: string;
+    aktor_role: string;
+    lokasi_asal?: string;
+    lokasi_tujuan?: string;
+    jumlah_pcs?: number;
+    catatan?: string;
+  }>;
 }
 
 export interface InspeksiMingguanLog {

@@ -22,6 +22,7 @@ import {
 import { Dapur, InventarisItem, InspeksiMingguanLog, TabType } from '../../types';
 import { db, saveDocument, getCollectionDocs } from '../../lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { FormInputAsetTersediaModal } from '../modules/FormInputAsetTersediaModal';
 
 interface KitchenInventoryScreenProps {
   currentDapur: Dapur;
@@ -76,6 +77,7 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
   const [itemConditions, setItemConditions] = useState<Record<string, 'normal' | 'kendala'>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showInputModal, setShowInputModal] = useState(false);
 
   // Sync inventaris for this kitchen in real-time from Firestore
   useEffect(() => {
@@ -153,6 +155,14 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
   const showNotification = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleSaveAsetSuccess = (newItem: InventarisItem) => {
+    setInventarisItems(prev => {
+      if (prev.some(x => x.id === newItem.id)) return prev;
+      return [newItem, ...prev];
+    });
+    showNotification(`Aset "${newItem.nama_barang}" berhasil dicatat di ${currentDapur.nama}!`);
   };
 
   // Filtered Items
@@ -301,17 +311,29 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
             Inventaris Peralatan Dapur
           </h2>
           <p className="text-xs text-[#6B7280] mt-0.5">
-            Daftar resmi peralatan terdaftar dari Pusat di {currentDapur.nama} dan status kelayakan fisik
+            Daftar peralatan fisik di {currentDapur.nama} dan status kelayakan fisik mingguan
           </p>
         </div>
 
-        <div className="text-left sm:text-right shrink-0">
-          <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider">
-            Total Peralatan Aktif
-          </span>
-          <span className="text-xl sm:text-2xl font-black text-[#111827]">
-            {inventarisItems.length} <span className="text-xs font-normal text-gray-500">Komoditas Aset</span>
-          </span>
+        <div className="flex items-center gap-3 justify-between sm:justify-end shrink-0 flex-wrap">
+          <div className="text-left sm:text-right">
+            <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider">
+              Total Peralatan
+            </span>
+            <span className="text-xl sm:text-2xl font-black text-[#111827]">
+              {inventarisItems.length} <span className="text-xs font-normal text-gray-500">Aset</span>
+            </span>
+          </div>
+
+          <button
+            type="button"
+            data-testid="btn-open-input-aset"
+            onClick={() => setShowInputModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer min-h-[42px]"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Catat Aset Dapur</span>
+          </button>
         </div>
       </div>
 
@@ -457,7 +479,16 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
                 : 'Silakan sesuaikan kata kunci pencarian atau ubah filter kategori di atas.'}
             </p>
 
-            <div className="mt-4 flex items-center justify-center gap-2">
+            <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+              <button
+                type="button"
+                data-testid="btn-empty-input-aset"
+                onClick={() => setShowInputModal(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer min-h-[40px]"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Catat Aset Yang Tersedia</span>
+              </button>
               <button
                 type="button"
                 onClick={() => onNavigateTab && onNavigateTab('laporan_dapur')}
@@ -523,6 +554,12 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
                           </span>
                         )}
                       </div>
+
+                      {item.catatan && (
+                        <p className="text-[11px] text-gray-500 mt-1.5 italic bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
+                          Catatan: {item.catatan}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -601,12 +638,21 @@ export const KitchenInventoryScreen: React.FC<KitchenInventoryScreenProps> = ({
             SOP Ceklis Inventaris Dapur SPPG
           </h4>
           <p className="text-[#6B7280] mt-0.5 leading-relaxed">
-            1. Master data aset peralatan dapur diisi secara terpusat oleh Tim Pengadaan Yayasan di ERP Desktop.
+            1. Master data aset peralatan dapur diisi secara terpusat oleh Tim Pengadaan Yayasan di ERP Desktop, atau dicatat oleh PIC untuk aset yang telah tersedia di dapur.
             2. Petugas PIC bertanggung jawab melakukan cek fisik mingguan terhadap fungsi kompor, steamer, freezer, dan ompreng.
             3. Jika terdapat alat yang malfungsi atau rusak berat, tandai "Ada Kendala" dan kirim laporan agar Maker segera menerbitkan disposisi perbaikan teknisi.
           </p>
         </div>
       </div>
+
+      {/* Modal Input Aset Tersedia */}
+      <FormInputAsetTersediaModal
+        isOpen={showInputModal}
+        onClose={() => setShowInputModal(false)}
+        currentDapur={currentDapur}
+        picName={picName}
+        onSaveSuccess={handleSaveAsetSuccess}
+      />
 
     </div>
   );

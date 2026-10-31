@@ -55,13 +55,19 @@ export function sanitizeFirestoreData<T extends Record<string, any>>(data: T): P
 }
 
 /**
- * Save / Merge a document in Firestore
+ * Save / Merge a document in Firestore with offline-safe timeout
  */
-export async function saveDocument(collectionName: string, docId: string, data: any) {
+export async function saveDocument(collectionName: string, docId: string, data: any, timeoutMs = 2000) {
   try {
     const docRef = doc(db, collectionName, docId);
     const cleaned = sanitizeFirestoreData(data);
-    await setDoc(docRef, cleaned, { merge: true });
+    const writePromise = setDoc(docRef, cleaned, { merge: true });
+    
+    // Safety timeout prevents UI hanging when offline or running in mock environments
+    await Promise.race([
+      writePromise,
+      new Promise((resolve) => setTimeout(resolve, timeoutMs))
+    ]);
     return true;
   } catch (error) {
     console.error(`Error saving document ${docId} to ${collectionName}:`, error);

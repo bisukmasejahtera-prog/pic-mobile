@@ -59,10 +59,12 @@ export type TabTarget = 'beranda' | 'penerimaan' | 'cek_mutu' | 'riwayat' | 'inv
  * Responsive navigation helper for both Mobile bottom-nav and Desktop sidebar.
  */
 export async function navigateToTab(page: Page, tab: TabTarget) {
-  const mobileNav = page.locator('nav.lg\\:hidden');
-  const isMobile = await mobileNav.isVisible();
+  const viewport = page.viewportSize();
+  const isMobile = !viewport || viewport.width < 1024;
 
   if (isMobile) {
+    const mobileNav = page.locator('nav.lg\\:hidden');
+    await mobileNav.waitFor({ state: 'visible', timeout: 10000 });
     const mobileLabels: Record<TabTarget, RegExp> = {
       beranda: /Beranda/i,
       penerimaan: /Penerimaan/i,
@@ -75,6 +77,7 @@ export async function navigateToTab(page: Page, tab: TabTarget) {
     await mobileNav.getByRole('button', { name: mobileLabels[tab] }).click();
   } else {
     const desktopAside = page.locator('aside');
+    await desktopAside.waitFor({ state: 'visible', timeout: 10000 });
     const desktopLabels: Record<TabTarget, RegExp> = {
       beranda: /Beranda Ops/i,
       penerimaan: /Penerimaan Bahan/i,
