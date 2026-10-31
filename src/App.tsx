@@ -54,8 +54,8 @@ export const App: React.FC = () => {
     } catch {
       // ignore
     }
-    // Default fallback to first kitchen
-    return MOCK_DAPURS[0];
+    // Default fallback to Dapur Dummy if found, else first kitchen
+    return MOCK_DAPURS.find(d => d.id === 'd-1790646298017') || MOCK_DAPURS[0];
   });
 
   // Operational Date State with persistence
@@ -93,9 +93,7 @@ export const App: React.FC = () => {
             i && 
             !i.id?.startsWith('dummy-') && 
             i.id !== 'RCV-ITM-01' && 
-            i.id !== 'RCV-ITM-02' &&
-            i.dapur_nama !== 'Dapur Dummy' &&
-            i.dapur_id !== 'd-1790646298017'
+            i.id !== 'RCV-ITM-02'
           );
         }
       }
@@ -114,9 +112,7 @@ export const App: React.FC = () => {
         if (Array.isArray(parsed)) {
           return parsed.filter(k => 
             k && 
-            !k.id?.startsWith('dummy-') && 
-            k.dapur_nama !== 'Dapur Dummy' && 
-            k.dapur_id !== 'd-1790646298017'
+            !k.id?.startsWith('dummy-')
           );
         }
       }
@@ -149,9 +145,7 @@ export const App: React.FC = () => {
             item && 
             !item.id?.startsWith('dummy-') && 
             item.id !== 'RCV-ITM-01' && 
-            item.id !== 'RCV-ITM-02' &&
-            item.dapur_nama !== 'Dapur Dummy' &&
-            item.dapur_id !== 'd-1790646298017'
+            item.id !== 'RCV-ITM-02'
           );
 
         realItems.sort((a, b) => {
@@ -190,7 +184,7 @@ export const App: React.FC = () => {
 
         const list = snap.docs
           .map(d => ({ id: d.id, ...d.data() } as LaporanKendalaDapur))
-          .filter(k => k && k.dapur_nama !== 'Dapur Dummy' && k.dapur_id !== 'd-1790646298017')
+          .filter(k => k && !k.id?.startsWith('dummy-'))
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         setLaporanItems(list);
