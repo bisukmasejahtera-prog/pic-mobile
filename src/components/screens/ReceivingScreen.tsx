@@ -20,15 +20,22 @@ import {
   Calendar,
   UploadCloud,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  PackageCheck,
+  ShieldCheck,
+  FileCheck2,
+  ArrowRight
 } from 'lucide-react';
 import { 
   Dapur, 
   Vendor, 
   Komoditas, 
   PenerimaanBahanItem,
+  KonfirmasiPenerimaanBahan,
   TabType 
 } from '../../types';
+import { ReceivingConfirmationView } from '../modules/ReceivingConfirmationView';
+import { ReceivingSuccessView } from '../modules/ReceivingSuccessView';
 import { getTodayDateStr, getTomorrowDateStr, formatDateIndo } from '../../utils/dateUtils';
 import { 
   uploadPhotoToGoogleDrive, 
@@ -95,6 +102,30 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
   const [customSatuan, setCustomSatuan] = useState<string>('');
   const [jamSampai, setJamSampai] = useState<string>(getCurrentTimeString);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+
+  // Multi-step View Mode: 'form' | 'confirmation' | 'success'
+  const [viewMode, setViewMode] = useState<'form' | 'confirmation' | 'success'>('form');
+  const [activeKonfirmasi, setActiveKonfirmasi] = useState<KonfirmasiPenerimaanBahan | null>(null);
+
+  // Check if there is an existing confirmation for current kitchen and target menu date
+  useEffect(() => {
+    try {
+      const storageKey = `pic_mobile_knf_${currentDapur.id}_${tanggalMenu}`;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.status === 'selesai_diterima') {
+          setActiveKonfirmasi(parsed);
+        } else {
+          setActiveKonfirmasi(null);
+        }
+      } else {
+        setActiveKonfirmasi(null);
+      }
+    } catch {
+      setActiveKonfirmasi(null);
+    }
+  }, [currentDapur.id, tanggalMenu]);
 
   // Retur section
   const [adaRetur, setAdaRetur] = useState<boolean>(false);
@@ -369,9 +400,76 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
   const itemsToday = penerimaanItems.filter(i => i.tanggal === todayStr);
   const displayedItems = feedFilter === 'terpilih' ? itemsToday : penerimaanItems;
 
+  const handleOpenConfirmation = () => {
+    if (displayedItems.length === 0) {
+      alert('Belum ada bahan baku yang diinput untuk tanggal ini.');
+      return;
+    }
+    setViewMode('confirmation');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleConfirmSuccess = (konfirmasi: KonfirmasiPenerimaanBahan) => {
+    setActiveKonfirmasi(konfirmasi);
+    setViewMode('success');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Dedicated Confirmation View
+  if (viewMode === 'confirmation') {
+    return (
+      <ReceivingConfirmationView
+        currentDapur={currentDapur}
+        picName={picName}
+        tanggalPenerimaan={todayStr}
+        tanggalMenu={tanggalMenu}
+        items={displayedItems}
+        onBackToForm={() => setViewMode('form')}
+        onConfirmSuccess={handleConfirmSuccess}
+      />
+    );
+  }
+
+  // Dedicated Success / Thank You View
+  if (viewMode === 'success' && activeKonfirmasi) {
+    return (
+      <ReceivingSuccessView
+        konfirmasi={activeKonfirmasi}
+        onNavigateTab={onNavigateTab}
+        onAddNewItem={() => setViewMode('form')}
+      />
+    );
+  }
+
   return (
     <div className="space-y-5 pb-24 lg:pb-12 max-w-2xl mx-auto">
       
+      {/* Active Confirmation Status Banner */}
+      {activeKonfirmasi && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div className="min-w-0">
+              <span className="text-xs font-bold block truncate">
+                Penerimaan Menu Ini Telah Selesai Dikonfirmasi
+              </span>
+              <span className="text-[11px] text-emerald-800 font-mono block">
+                No. BAP: {activeKonfirmasi.nomor_bap} ({activeKonfirmasi.total_items} Komoditas)
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            data-testid="btn-view-active-bap"
+            onClick={() => setViewMode('success')}
+            className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all cursor-pointer min-h-[40px] flex items-center justify-center gap-1.5 shrink-0 shadow-xs"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Lihat Tanda Terima BAP</span>
+          </button>
+        </div>
+      )}
+
       {/* Success Notification */}
       {feedbackSuccess && (
         <div className="p-4 bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg flex items-center gap-3 animate-fadeIn">
@@ -943,6 +1041,37 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
           </div>
         </div>
 
+        {/* Banner CTA Konfirmasi Seluruh Bahan */}
+        {displayedItems.length > 0 && (
+          <div 
+            data-testid="banner-konfirmasi-seluruhnya"
+            className="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <PackageCheck className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-emerald-950">
+                  Semua Bahan Sudah Selesai Diinput?
+                </h4>
+                <p className="text-[11px] sm:text-xs text-emerald-800 mt-0.5">
+                  {displayedItems.length} bahan baku siap disahkan dalam Berita Acara Penerimaan (BAP).
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              data-testid="btn-open-konfirmasi-seluruhnya"
+              onClick={handleOpenConfirmation}
+              className="w-full sm:w-auto px-4 sm:px-5 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+              <span>Konfirmasi Barang Sudah Diterima Seluruhnya</span>
+            </button>
+          </div>
+        )}
+
         {displayedItems.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-2xl border border-gray-200 text-gray-400">
             <Scale className="w-8 h-8 mx-auto mb-1.5 opacity-40" />
@@ -1039,6 +1168,20 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
                 </div>
               </div>
             ))}
+
+            {displayedItems.length > 2 && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  data-testid="btn-open-konfirmasi-seluruhnya-bottom"
+                  onClick={handleOpenConfirmation}
+                  className="w-full py-3.5 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer min-h-[48px]"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                  <span>Konfirmasi Barang Sudah Diterima Seluruhnya</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

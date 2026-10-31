@@ -103,4 +103,48 @@ test.describe('PIC-Mobile Penerimaan Bahan Flow', () => {
     await expect(page.getByText(/Berhasil memperbarui data penerimaan/i)).toBeVisible();
     await expect(page.getByText('8 Zak').first()).toBeVisible();
   });
+
+  test('TC-RECV-05: Confirms full reception of raw materials and displays digital BAP thank you page', async ({ page }) => {
+    // 1. Ensure at least one item is present
+    await page.locator('#input-nama-bahan').fill('Minyak Goreng Sawit 2L');
+    await page.locator('#input-nama-supplier').fill('Distributor Sembako Nusantara');
+    await page.locator('#input-jumlah-sampai').fill('20');
+    await page.locator('#select-satuan').selectOption('Liter');
+
+    const submitBtn = page.getByRole('button', { name: /Simpan Laporan Bahan Ini/i });
+    await submitBtn.click();
+    await expect(page.getByText(/Berhasil mencatat penerimaan: Minyak Goreng Sawit 2L/i)).toBeVisible();
+
+    // 2. Click Konfirmasi Barang Sudah Diterima Seluruhnya banner / button
+    const confirmBannerBtn = page.getByTestId('btn-open-konfirmasi-seluruhnya');
+    await expect(confirmBannerBtn).toBeVisible();
+    await confirmBannerBtn.click();
+
+    // 3. Verify on Confirmation View
+    await expect(page.getByText('Konfirmasi Penerimaan Seluruh Bahan Baku')).toBeVisible();
+    await expect(page.getByText('Daftar Bahan Siap Disahkan')).toBeVisible();
+    await expect(page.getByText('Minyak Goreng Sawit 2L').first()).toBeVisible();
+
+    // 4. Agreement Checkbox & Submit
+    const agreementCheckbox = page.getByTestId('checkbox-agreement-konfirmasi');
+    await expect(agreementCheckbox).toBeVisible();
+    await agreementCheckbox.check();
+
+    const finalSubmitBtn = page.getByTestId('btn-submit-konfirmasi-final');
+    await expect(finalSubmitBtn).toBeEnabled();
+    await finalSubmitBtn.click();
+
+    // 5. Verify Thank You / Success View
+    await expect(page.getByText('Terima Kasih Sudah Submit Data Penerimaan Bahan Baku')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Berita Acara Penerimaan (BAP) Digital')).toBeVisible();
+    await expect(page.getByText(/BAP-SPPG-/i)).toBeVisible();
+
+    // 6. Navigate back to Beranda
+    const btnKeBeranda = page.getByTestId('btn-success-ke-beranda');
+    await expect(btnKeBeranda).toBeVisible();
+    await btnKeBeranda.click();
+
+    // Confirm redirected to Beranda
+    await expect(page.getByText(/Penerimaan Bahan Baku Dapur SPPG/i).first()).toBeVisible();
+  });
 });

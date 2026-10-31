@@ -104,6 +104,24 @@ export interface PenerimaanBahanItem {
   created_at: string;
 }
 
+export interface KonfirmasiPenerimaanBahan {
+  id: string;
+  dapur_id: string;
+  dapur_nama: string;
+  tanggal_penerimaan: string;
+  tanggal_menu: string;
+  pic_nama: string;
+  nomor_bap: string;
+  total_items: number;
+  total_volume_kg: number;
+  total_retur_count: number;
+  total_retur_kg: number;
+  catatan_ba?: string;
+  waktu_konfirmasi: string;
+  status: 'selesai_diterima';
+  items_snapshot: PenerimaanBahanItem[];
+}
+
 export interface HACCPChecklistState {
   kebersihan_armada: boolean;
   uji_organoleptik: boolean;
