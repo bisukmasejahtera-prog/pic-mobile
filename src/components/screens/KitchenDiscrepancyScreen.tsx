@@ -32,6 +32,8 @@ interface KitchenDiscrepancyScreenProps {
   laporanItems: LaporanKendalaDapur[];
   onSaveLaporan: (laporan: LaporanKendalaDapur) => Promise<void> | void;
   onOpenDetail?: (laporan: LaporanKendalaDapur) => void;
+  prefillAlatNama?: string | null;
+  onClearPrefillAlat?: () => void;
 }
 
 const KATEGORI_CONFIG: Record<KategoriKendala, { label: string; badgeClass: string; bgClass: string; borderClass: string; textClass: string }> = {
@@ -114,10 +116,24 @@ export const KitchenDiscrepancyScreen: React.FC<KitchenDiscrepancyScreenProps> =
   picName = 'Petugas PIC',
   laporanItems,
   onSaveLaporan,
-  onOpenDetail
+  onOpenDetail,
+  prefillAlatNama,
+  onClearPrefillAlat
 }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedLaporanForDetail, setSelectedLaporanForDetail] = useState<LaporanKendalaDapur | null>(null);
+
+  // Auto open form when redirected from Inventaris with a broken equipment
+  React.useEffect(() => {
+    if (prefillAlatNama) {
+      setFormKategori('kerusakan_alat');
+      setFormUrgensi('sedang');
+      setFormJudul(`Kerusakan Alat: ${prefillAlatNama}`);
+      setFormDeskripsi(`Peralatan ${prefillAlatNama} mengalami kendala saat inspeksi rutin mingguan.`);
+      setShowCreateModal(true);
+      if (onClearPrefillAlat) onClearPrefillAlat();
+    }
+  }, [prefillAlatNama, onClearPrefillAlat]);
 
   // Filters
   const [filterKategori, setFilterKategori] = useState<string>('semua');

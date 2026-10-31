@@ -124,6 +124,7 @@ export const App: React.FC = () => {
   });
 
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<PenerimaanBahanItem | null>(null);
+  const [kendalaPrefillAlat, setKendalaPrefillAlat] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Sync live data from Firestore collection 'penerimaan_bahan' in real-time
@@ -491,7 +492,8 @@ export const App: React.FC = () => {
               currentDapur={currentDapur}
               picName={currentUser.name}
               onNavigateTab={setActiveTab}
-              onOpenLaporKendalaForAlat={() => {
+              onOpenLaporKendalaForAlat={(namaAlat) => {
+                setKendalaPrefillAlat(namaAlat);
                 setActiveTab('laporan_dapur');
               }}
             />
@@ -503,6 +505,8 @@ export const App: React.FC = () => {
               picName={currentUser.name}
               laporanItems={laporanItems}
               onSaveLaporan={handleSaveLaporan}
+              prefillAlatNama={kendalaPrefillAlat}
+              onClearPrefillAlat={() => setKendalaPrefillAlat(null)}
             />
           )}
 
