@@ -193,7 +193,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <Truck className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="text-2xl sm:text-[28px] font-bold text-[#111827] tracking-tight">
-            {totalWeightKg.toFixed(1)} <span className="text-xs font-normal text-gray-500">Kg</span>
+            {Number(totalWeightKg.toFixed(2))} <span className="text-xs font-normal text-gray-500">Kg</span>
           </div>
           <div className="text-[11px] text-gray-500 font-medium mt-1 truncate">
             Timbangan fisik riil dapur
@@ -221,7 +221,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <RotateCcw className="w-4 h-4 text-red-600" />
           </div>
           <div className="text-2xl sm:text-[28px] font-bold text-red-700 tracking-tight">
-            {totalReturKg.toFixed(1)} <span className="text-xs font-normal text-gray-500">Kg</span>
+            {Number(totalReturKg.toFixed(2))} <span className="text-xs font-normal text-gray-500">Kg</span>
           </div>
           <div className="text-[11px] text-red-700 font-bold mt-1">
             {itemsWithReturCount} kejadian retur hari ini

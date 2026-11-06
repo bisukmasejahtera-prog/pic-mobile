@@ -135,11 +135,12 @@ export const CommodityWeightCard: React.FC<CommodityWeightCardProps> = ({
               id={`input-timbangan-${item.id}`}
               name={`timbangan_riil_${item.id}`}
               type="number"
-              step="0.1"
+              step="any"
               min="0"
               value={item.timbangan_riil_kg === 0 ? '' : item.timbangan_riil_kg}
               onChange={(e) => {
-                const val = parseFloat(e.target.value);
+                const raw = e.target.value;
+                const val = parseFloat(String(raw).replace(',', '.'));
                 onChangeWeight(item.id, isNaN(val) ? 0 : val);
               }}
               placeholder="0.0"
@@ -153,7 +154,7 @@ export const CommodityWeightCard: React.FC<CommodityWeightCardProps> = ({
           <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-200/60">
             <button
               type="button"
-              onClick={() => onChangeWeight(item.id, Math.max(0, Number((item.timbangan_riil_kg - 0.5).toFixed(1))))}
+              onClick={() => onChangeWeight(item.id, Math.max(0, parseFloat((item.timbangan_riil_kg - 0.5).toFixed(2))))}
               className="flex-1 py-1 px-2 rounded-lg bg-white border border-[#E5E7EB] text-[#111827] hover:bg-gray-50 active:scale-95 transition-all text-xs font-bold flex items-center justify-center min-h-[36px]"
               title="Kurang 0.5 kg"
             >
@@ -171,7 +172,7 @@ export const CommodityWeightCard: React.FC<CommodityWeightCardProps> = ({
             )}
             <button
               type="button"
-              onClick={() => onChangeWeight(item.id, Number((item.timbangan_riil_kg + 0.5).toFixed(1)))}
+              onClick={() => onChangeWeight(item.id, parseFloat((item.timbangan_riil_kg + 0.5).toFixed(2)))}
               className="flex-1 py-1 px-2 rounded-lg bg-white border border-[#E5E7EB] text-[#111827] hover:bg-gray-50 active:scale-95 transition-all text-xs font-bold flex items-center justify-center min-h-[36px]"
               title="Tambah 0.5 kg"
             >

@@ -87,11 +87,15 @@ export const ReturModal: React.FC<ReturModalProps> = ({
                 id="input-retur-kg"
                 name="retur_kg"
                 type="number"
-                step="0.1"
-                min="0.1"
+                step="any"
+                min="0.001"
                 max={item.target_po_kg}
                 value={returKg}
-                onChange={(e) => setReturKg(Number(e.target.value))}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const parsed = parseFloat(String(raw).replace(',', '.'));
+                  setReturKg(isNaN(parsed) ? 0 : parsed);
+                }}
                 className="w-full text-base font-bold bg-white border border-gray-300 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
                 required
               />

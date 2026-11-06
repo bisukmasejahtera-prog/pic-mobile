@@ -79,9 +79,9 @@ export const ReceivingConfirmationView: React.FC<ReceivingConfirmationViewProps>
         pic_nama: picName,
         nomor_bap: nomorBAP,
         total_items: items.length,
-        total_volume_kg: Number(totalVolumeKg.toFixed(1)),
+        total_volume_kg: Number(totalVolumeKg.toFixed(2)),
         total_retur_count: returItems.length,
-        total_retur_kg: Number(totalReturKg.toFixed(1)),
+        total_retur_kg: Number(totalReturKg.toFixed(2)),
         catatan_ba: catatanBA.trim() || undefined,
         waktu_konfirmasi: now.toISOString(),
         status: 'selesai_diterima',
@@ -203,7 +203,7 @@ export const ReceivingConfirmationView: React.FC<ReceivingConfirmationViewProps>
             Total Volume
           </span>
           <span className="text-lg sm:text-xl font-black text-emerald-700 block mt-0.5">
-            {totalVolumeKg.toFixed(1)}
+            {Number(totalVolumeKg.toFixed(2))}
           </span>
           <span className="text-[10px] text-gray-500 font-medium">Kilogram/Unit</span>
         </div>
@@ -222,7 +222,7 @@ export const ReceivingConfirmationView: React.FC<ReceivingConfirmationViewProps>
             {returItems.length > 0 ? `${returItems.length} Retur` : '0 Retur'}
           </span>
           <span className="text-[10px] text-gray-500 font-medium">
-            {returItems.length > 0 ? `${totalReturKg.toFixed(1)} kg ditolak` : 'Kualitas Baik'}
+            {returItems.length > 0 ? `${Number(totalReturKg.toFixed(2))} kg ditolak` : 'Kualitas Baik'}
           </span>
         </div>
       </div>

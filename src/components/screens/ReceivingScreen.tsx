@@ -319,6 +319,12 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
     }
   };
 
+  const parseDecimalInput = (val: string): number => {
+    if (!val) return NaN;
+    const normalized = String(val).replace(',', '.').trim();
+    return parseFloat(normalized);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -330,14 +336,14 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
       alert('Mohon isi nama supplier / pengirim.');
       return;
     }
-    const berat = parseFloat(jumlahSampai);
+    const berat = parseDecimalInput(jumlahSampai);
     if (isNaN(berat) || berat <= 0) {
       alert('Mohon masukkan jumlah sampai yang valid (> 0).');
       return;
     }
 
-    const returKg = adaRetur ? parseFloat(jumlahRetur) : undefined;
-    const suhu = suhuCelsius ? parseFloat(suhuCelsius) : undefined;
+    const returKg = adaRetur ? parseDecimalInput(jumlahRetur) : undefined;
+    const suhu = suhuCelsius ? parseDecimalInput(suhuCelsius) : undefined;
     const satuanFinal = satuan === 'Lainnya' ? (customSatuan.trim() || 'Kg') : satuan;
     const existingItem = editingItemId ? penerimaanItems.find(x => x.id === editingItemId) : null;
 
@@ -572,8 +578,8 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
                 id="input-jumlah-sampai"
                 name="jumlah_sampai"
                 type="number"
-                step="0.1"
-                min="0.1"
+                step="any"
+                min="0.001"
                 required
                 value={jumlahSampai}
                 onChange={(e) => setJumlahSampai(e.target.value)}
@@ -625,10 +631,11 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
                   key={step}
                   type="button"
                   onClick={() => {
-                    const current = parseFloat(jumlahSampai) || 0;
-                    setJumlahSampai((current + step).toFixed(1));
+                    const current = parseDecimalInput(jumlahSampai) || 0;
+                    const nextVal = current + step;
+                    setJumlahSampai(Number.isInteger(nextVal) ? nextVal.toString() : parseFloat(nextVal.toFixed(2)).toString());
                   }}
-                  className="flex-1 py-1 rounded-lg bg-white border border-gray-200 text-[11px] font-bold text-gray-700 hover:bg-gray-50 active:scale-95"
+                  className="flex-1 py-1 rounded-lg bg-white border border-gray-200 text-[11px] font-bold text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
                 >
                   +{step}
                 </button>
@@ -672,7 +679,7 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
                 id="input-suhu-peti"
                 name="suhu_celsius"
                 type="number"
-                step="0.1"
+                step="any"
                 value={suhuCelsius}
                 onChange={(e) => setSuhuCelsius(e.target.value)}
                 placeholder="3.5"
@@ -724,12 +731,12 @@ export const ReceivingScreen: React.FC<ReceivingScreenProps> = ({
                     id="input-jumlah-retur"
                     name="jumlah_retur"
                     type="number"
-                    step="0.1"
-                    min="0.1"
+                    step="any"
+                    min="0.001"
                     required={adaRetur}
                     value={jumlahRetur}
                     onChange={(e) => setJumlahRetur(e.target.value)}
-                    placeholder="Contoh: 2.0"
+                    placeholder="Contoh: 0.25"
                     className="w-full font-bold bg-white border border-red-300 rounded-xl px-3 py-2 text-red-900 focus:outline-none focus:border-red-500"
                   />
                 </div>

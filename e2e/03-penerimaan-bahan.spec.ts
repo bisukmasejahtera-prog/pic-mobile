@@ -147,4 +147,23 @@ test.describe('PIC-Mobile Penerimaan Bahan Flow', () => {
     // Confirm redirected to Beranda
     await expect(page.getByText(/Penerimaan Bahan Baku Dapur SPPG/i).first()).toBeVisible();
   });
+
+  test('TC-RECV-06: Successfully records raw material with fractional decimal weight (0.25 Kg)', async ({ page }) => {
+    // Fill in item with 0.25 Kg weight (like Asam Potong in the reported bug)
+    await page.locator('#input-nama-bahan').fill('Asam Potong');
+    await page.locator('#input-nama-supplier').fill('Merry');
+    await page.locator('#input-jumlah-sampai').fill('0.25');
+    await page.locator('#select-satuan').selectOption('Kg');
+
+    // Submit form
+    const submitBtn = page.getByRole('button', { name: /Simpan Laporan Bahan Ini/i });
+    await submitBtn.click();
+
+    // Verify success banner appears without HTML5 validation error
+    await expect(page.getByText(/Berhasil mencatat penerimaan: Asam Potong/i)).toBeVisible();
+
+    // Verify 0.25 Kg appears in the feed
+    await expect(page.getByText('Asam Potong').first()).toBeVisible();
+    await expect(page.getByText('0.25 Kg').first()).toBeVisible();
+  });
 });
