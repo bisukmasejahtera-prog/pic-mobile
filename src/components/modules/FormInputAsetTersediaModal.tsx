@@ -13,7 +13,9 @@ import {
   ShieldCheck,
   Flame,
   Refrigerator,
-  Truck
+  Truck,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { Dapur, InventarisItem } from '../../types';
 import { saveDocument } from '../../lib/firebase';
@@ -66,42 +68,85 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
   const [catatanSimpel, setCatatanSimpel] = useState('');
 
   // Section 3: Kuantitas & Rincian Fisik
-  const [jumlahBarang, setJumlahBarang] = useState<number>(1);
+  const [jumlahBarang, setJumlahBarang] = useState<number | ''>(1);
   const [satuan, setSatuan] = useState('Unit');
   const [customSatuan, setCustomSatuan] = useState('');
-  const [kondisiBaik, setKondisiBaik] = useState<number>(1);
-  const [kondisiRusakRingan, setKondisiRusakRingan] = useState<number>(0);
-  const [kondisiRusakBerat, setKondisiRusakBerat] = useState<number>(0);
+  const [kondisiBaik, setKondisiBaik] = useState<number | ''>(1);
+  const [kondisiRusakRingan, setKondisiRusakRingan] = useState<number | ''>(0);
+  const [kondisiRusakBerat, setKondisiRusakBerat] = useState<number | ''>(0);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Auto-sync condition when jumlahBarang changes
-  const handleJumlahBarangChange = (val: number) => {
-    const nextQty = Math.max(1, isNaN(val) ? 1 : val);
+  const updateJumlahBarang = (nextQty: number) => {
     setJumlahBarang(nextQty);
-    const totalRusak = kondisiRusakRingan + kondisiRusakBerat;
-    setKondisiBaik(Math.max(0, nextQty - totalRusak));
+    const rRingan = typeof kondisiRusakRingan === 'number' ? kondisiRusakRingan : 0;
+    const rBerat = typeof kondisiRusakBerat === 'number' ? kondisiRusakBerat : 0;
+
+    // If no damage was recorded yet, keep kondisiBaik equal to total
+    if (rRingan === 0 && rBerat === 0) {
+      setKondisiBaik(nextQty);
+    }
   };
 
-  const handleRusakRinganChange = (val: number) => {
-    const parsed = Math.max(0, isNaN(val) ? 0 : val);
-    const clamped = Math.min(parsed, Math.max(0, jumlahBarang - kondisiRusakBerat));
-    setKondisiRusakRingan(clamped);
-    setKondisiBaik(Math.max(0, jumlahBarang - (clamped + kondisiRusakBerat)));
+  const handleAutoBalance = () => {
+    const totalRusak = numRusakRingan + numRusakBerat;
+    setKondisiBaik(Math.max(0, numJumlah - totalRusak));
   };
 
-  const handleRusakBeratChange = (val: number) => {
-    const parsed = Math.max(0, isNaN(val) ? 0 : val);
-    const clamped = Math.min(parsed, Math.max(0, jumlahBarang - kondisiRusakRingan));
-    setKondisiRusakBerat(clamped);
-    setKondisiBaik(Math.max(0, jumlahBarang - (kondisiRusakRingan + clamped)));
+  const handleJumlahBarangBlur = () => {
+    if (jumlahBarang === '' || jumlahBarang < 1) {
+      updateJumlahBarang(1);
+    }
   };
 
-  const handleKondisiBaikChange = (val: number) => {
-    const parsed = Math.max(0, isNaN(val) ? 0 : val);
-    const clamped = Math.min(parsed, jumlahBarang);
-    setKondisiBaik(clamped);
+  const handleRusakRinganChange = (raw: string) => {
+    if (raw === '') {
+      setKondisiRusakRingan('');
+      return;
+    }
+    const val = parseFloat(raw.replace(',', '.'));
+    if (isNaN(val)) return;
+    setKondisiRusakRingan(Math.max(0, val));
+  };
+
+  const handleRusakRinganBlur = () => {
+    if (kondisiRusakRingan === '') {
+      setKondisiRusakRingan(0);
+    }
+  };
+
+  const handleRusakBeratChange = (raw: string) => {
+    if (raw === '') {
+      setKondisiRusakBerat('');
+      return;
+    }
+    const val = parseFloat(raw.replace(',', '.'));
+    if (isNaN(val)) return;
+    setKondisiRusakBerat(Math.max(0, val));
+  };
+
+  const handleRusakBeratBlur = () => {
+    if (kondisiRusakBerat === '') {
+      setKondisiRusakBerat(0);
+    }
+  };
+
+  const handleKondisiBaikChange = (raw: string) => {
+    if (raw === '') {
+      setKondisiBaik('');
+      return;
+    }
+    const val = parseFloat(raw.replace(',', '.'));
+    if (isNaN(val)) return;
+    setKondisiBaik(Math.max(0, val));
+  };
+
+  const handleKondisiBaikBlur = () => {
+    if (kondisiBaik === '') {
+      setKondisiBaik(0);
+    }
   };
 
   // Reset or pre-populate form when opened or when itemToEdit changes
@@ -150,8 +195,13 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
 
   if (!isOpen) return null;
 
-  const totalKondisiFisik = kondisiBaik + kondisiRusakRingan + kondisiRusakBerat;
-  const isConditionBalanced = totalKondisiFisik === jumlahBarang;
+  const numJumlah = typeof jumlahBarang === 'number' ? jumlahBarang : (parseFloat(String(jumlahBarang).replace(',', '.')) || 0);
+  const numBaik = typeof kondisiBaik === 'number' ? kondisiBaik : (parseFloat(String(kondisiBaik).replace(',', '.')) || 0);
+  const numRusakRingan = typeof kondisiRusakRingan === 'number' ? kondisiRusakRingan : (parseFloat(String(kondisiRusakRingan).replace(',', '.')) || 0);
+  const numRusakBerat = typeof kondisiRusakBerat === 'number' ? kondisiRusakBerat : (parseFloat(String(kondisiRusakBerat).replace(',', '.')) || 0);
+
+  const totalKondisiFisik = numBaik + numRusakRingan + numRusakBerat;
+  const isConditionBalanced = Math.abs(totalKondisiFisik - numJumlah) < 0.0001 && numJumlah > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,13 +212,13 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
       return;
     }
 
-    if (jumlahBarang < 1) {
+    if (numJumlah < 1) {
       setFormError('Jumlah barang minimal 1 unit.');
       return;
     }
 
     if (!isConditionBalanced) {
-      setFormError(`Total rincian kondisi fisik (${totalKondisiFisik}) harus sama dengan jumlah total barang (${jumlahBarang}).`);
+      setFormError(`Total rincian kondisi fisik (${totalKondisiFisik}) harus sama dengan jumlah total barang (${numJumlah}).`);
       return;
     }
 
@@ -191,15 +241,15 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
           spesifikasi: spesifikasi.trim() || undefined,
           kategori: kategori,
           satuan: effectiveSatuan,
-          kuantitas_satuan: jumlahBarang,
-          total_kuantitas_pcs: jumlahBarang,
-          kondisi_baik_pcs: kondisiBaik,
-          kondisi_rusak_ringan_pcs: kondisiRusakRingan,
-          kondisi_rusak_berat_pcs: kondisiRusakBerat,
+          kuantitas_satuan: numJumlah,
+          total_kuantitas_pcs: numJumlah,
+          kondisi_baik_pcs: numBaik,
+          kondisi_rusak_ringan_pcs: numRusakRingan,
+          kondisi_rusak_berat_pcs: numRusakBerat,
           catatan: catatanSimpel.trim() || itemToEdit.catatan,
           last_inspected_at: now.toISOString().split('T')[0],
           last_inspected_by: picName,
-          last_inspected_status: (kondisiRusakRingan > 0 || kondisiRusakBerat > 0) ? 'kendala' : 'normal',
+          last_inspected_status: (numRusakRingan > 0 || numRusakBerat > 0) ? 'kendala' : 'normal',
           riwayat_alur: [
             ...(itemToEdit.riwayat_alur || []),
             {
@@ -207,12 +257,12 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
               tanggal: now.toISOString().split('T')[0],
               tipe_event: 'pembelian_yayasan',
               judul: 'Pembaruan Data Aset Dapur',
-              deskripsi: `Pembaruan data dan kondisi fisik aset oleh PIC (${picName}): ${jumlahBarang} ${effectiveSatuan}.`,
+              deskripsi: `Pembaruan data dan kondisi fisik aset oleh PIC (${picName}): ${numJumlah} ${effectiveSatuan}.`,
               aktor_nama: picName,
               aktor_role: 'PIC Dapur SPPG',
               lokasi_asal: currentDapur.nama,
               lokasi_tujuan: currentDapur.nama,
-              jumlah_pcs: jumlahBarang,
+              jumlah_pcs: numJumlah,
               catatan: catatanSimpel.trim() || undefined
             }
           ]
@@ -246,33 +296,33 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
         kode_bast_terakhir: '', // Akan dilengkapi Tim ERP Desktop
         supplier_toko: '', // Akan dilengkapi Tim ERP Desktop
         satuan: effectiveSatuan,
-        kuantitas_satuan: jumlahBarang,
+        kuantitas_satuan: numJumlah,
         konversi_pcs: 1,
-        total_kuantitas_pcs: jumlahBarang,
+        total_kuantitas_pcs: numJumlah,
         harga_satuan_rp: 0, // Akan dilengkapi Tim ERP Desktop
         total_harga_rp: 0, // Akan dilengkapi Tim ERP Desktop
         status_aset: 'di_sppg',
-        kondisi_baik_pcs: kondisiBaik,
-        kondisi_rusak_ringan_pcs: kondisiRusakRingan,
+        kondisi_baik_pcs: numBaik,
+        kondisi_rusak_ringan_pcs: numRusakRingan,
         kondisi_rusak_sedang_pcs: 0,
-        kondisi_rusak_berat_pcs: kondisiRusakBerat,
+        kondisi_rusak_berat_pcs: numRusakBerat,
         catatan: catatanSimpel.trim() || `Aset dicatat oleh PIC (${picName}) di ${currentDapur.nama}`,
         created_at: now.toISOString(),
         last_inspected_at: now.toISOString().split('T')[0],
         last_inspected_by: picName,
-        last_inspected_status: (kondisiRusakRingan > 0 || kondisiRusakBerat > 0) ? 'kendala' : 'normal',
+        last_inspected_status: (numRusakRingan > 0 || numRusakBerat > 0) ? 'kendala' : 'normal',
         riwayat_alur: [
           {
             id: `alr-${Date.now()}`,
             tanggal: now.toISOString().split('T')[0],
             tipe_event: 'pembelian_yayasan',
             judul: 'Pencatatan Saldo Awal Aset Dapur',
-            deskripsi: `Pencatatan fisik aset yang sudah tersedia di ${currentDapur.nama} sebanyak ${jumlahBarang} ${effectiveSatuan}. Data administratif akan diverifikasi oleh Tim ERP Desktop Yayasan.`,
+            deskripsi: `Pencatatan fisik aset yang sudah tersedia di ${currentDapur.nama} sebanyak ${numJumlah} ${effectiveSatuan}. Data administratif akan diverifikasi oleh Tim ERP Desktop Yayasan.`,
             aktor_nama: picName,
             aktor_role: 'PIC Dapur SPPG',
             lokasi_asal: currentDapur.nama,
             lokasi_tujuan: currentDapur.nama,
-            jumlah_pcs: jumlahBarang,
+            jumlah_pcs: numJumlah,
             catatan: catatanSimpel.trim() || undefined
           }
         ]
@@ -496,7 +546,7 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
                 <span>3. Kuantitas & Rincian Kondisi Fisik</span>
               </div>
               <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                Total Volume: {jumlahBarang} {satuan}
+                Total Volume: {numJumlah} {satuan === 'Lainnya' ? (customSatuan || 'Satuan Custom') : satuan}
               </span>
             </div>
 
@@ -505,15 +555,71 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
                 <label className="block text-xs font-bold text-gray-800 mb-1">
                   Jumlah Barang <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="number"
-                  min={1}
-                  required
-                  data-testid="input-jumlah-barang"
-                  value={jumlahBarang}
-                  onChange={(e) => handleJumlahBarangChange(parseInt(e.target.value, 10))}
-                  className="w-full text-xs font-bold px-3.5 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[#111827] focus:bg-white focus:outline-none focus:border-blue-600"
-                />
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = typeof jumlahBarang === 'number' ? jumlahBarang : 1;
+                      updateJumlahBarang(Math.max(1, cur - 1));
+                    }}
+                    disabled={typeof jumlahBarang === 'number' && jumlahBarang <= 1}
+                    className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shrink-0 cursor-pointer"
+                    title="Kurangi 1 unit"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    required
+                    data-testid="input-jumlah-barang"
+                    value={jumlahBarang}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === '') {
+                        setJumlahBarang('');
+                        return;
+                      }
+                      const val = parseFloat(raw.replace(',', '.'));
+                      if (!isNaN(val)) {
+                        updateJumlahBarang(Math.max(0, val));
+                      }
+                    }}
+                    onBlur={handleJumlahBarangBlur}
+                    className="w-full text-center text-sm font-bold px-3 py-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[#111827] focus:bg-white focus:outline-none focus:border-blue-600 h-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = typeof jumlahBarang === 'number' ? jumlahBarang : 0;
+                      updateJumlahBarang(cur + 1);
+                    }}
+                    className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 transition-all border border-slate-200 shrink-0 cursor-pointer"
+                    title="Tambah 1 unit"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Quick Add Pill Buttons */}
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tambah:</span>
+                  {[1, 5, 10, 50].map((inc) => (
+                    <button
+                      key={inc}
+                      type="button"
+                      onClick={() => {
+                        const cur = typeof jumlahBarang === 'number' ? jumlahBarang : 0;
+                        updateJumlahBarang(cur + inc);
+                      }}
+                      className="px-2 py-0.5 text-[11px] font-bold rounded-lg bg-slate-100 hover:bg-blue-50 hover:text-blue-700 active:scale-95 text-slate-700 border border-slate-200 transition-all cursor-pointer"
+                    >
+                      +{inc}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -524,7 +630,7 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
                   data-testid="select-satuan-barang"
                   value={satuan}
                   onChange={(e) => setSatuan(e.target.value)}
-                  className="w-full text-xs font-medium px-3.5 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[#111827] focus:bg-white focus:outline-none focus:border-blue-600"
+                  className="w-full text-xs font-medium px-3.5 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[#111827] focus:bg-white focus:outline-none focus:border-blue-600 h-10"
                 >
                   {SATUAN_INVENTARIS_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -554,11 +660,23 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
 
             {/* Condition Breakdown */}
             <div className="bg-gray-50 rounded-2xl border border-gray-200 p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-bold text-gray-700">
+              <div className="flex items-center justify-between text-xs font-bold text-gray-700 flex-wrap gap-2">
                 <span>Rincian Fisik Saat Ini</span>
-                <span className={`text-[11px] font-semibold ${isConditionBalanced ? 'text-emerald-700' : 'text-red-600 font-bold'}`}>
-                  Terhitung: {totalKondisiFisik} dari {jumlahBarang} {satuan === 'Lainnya' ? (customSatuan || 'Satuan Custom') : satuan}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[11px] font-semibold ${isConditionBalanced ? 'text-emerald-700' : 'text-amber-700 font-bold'}`}>
+                    Terhitung: {totalKondisiFisik} dari {numJumlah} {satuan === 'Lainnya' ? (customSatuan || 'Satuan Custom') : satuan}
+                    {isConditionBalanced ? ' ✓' : ''}
+                  </span>
+                  {!isConditionBalanced && numJumlah > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleAutoBalance}
+                      className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-bold hover:bg-blue-100 active:scale-95 transition-all cursor-pointer"
+                    >
+                      Seimbangkan
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
@@ -568,12 +686,14 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
                   </label>
                   <input
                     type="number"
-                    min={0}
-                    max={jumlahBarang}
+                    min="0"
+                    step="any"
                     data-testid="input-kondisi-baik"
                     value={kondisiBaik}
-                    onChange={(e) => handleKondisiBaikChange(parseInt(e.target.value, 10))}
-                    className="w-full text-xs font-bold px-2 py-1.5 bg-emerald-50/50 border border-emerald-300 rounded-lg text-emerald-900 focus:bg-white focus:outline-none"
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => handleKondisiBaikChange(e.target.value)}
+                    onBlur={handleKondisiBaikBlur}
+                    className="w-full text-xs font-bold px-2 py-1.5 bg-emerald-50/50 border border-emerald-300 rounded-lg text-emerald-900 focus:bg-white focus:outline-none text-center"
                   />
                 </div>
 
@@ -583,12 +703,14 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
                   </label>
                   <input
                     type="number"
-                    min={0}
-                    max={jumlahBarang}
+                    min="0"
+                    step="any"
                     data-testid="input-kondisi-rusak-ringan"
                     value={kondisiRusakRingan}
-                    onChange={(e) => handleRusakRinganChange(parseInt(e.target.value, 10))}
-                    className="w-full text-xs font-bold px-2 py-1.5 bg-amber-50/50 border border-amber-300 rounded-lg text-amber-900 focus:bg-white focus:outline-none"
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => handleRusakRinganChange(e.target.value)}
+                    onBlur={handleRusakRinganBlur}
+                    className="w-full text-xs font-bold px-2 py-1.5 bg-amber-50/50 border border-amber-300 rounded-lg text-amber-900 focus:bg-white focus:outline-none text-center"
                   />
                 </div>
 
@@ -598,12 +720,14 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
                   </label>
                   <input
                     type="number"
-                    min={0}
-                    max={jumlahBarang}
+                    min="0"
+                    step="any"
                     data-testid="input-kondisi-rusak-berat"
                     value={kondisiRusakBerat}
-                    onChange={(e) => handleRusakBeratChange(parseInt(e.target.value, 10))}
-                    className="w-full text-xs font-bold px-2 py-1.5 bg-red-50/50 border border-red-300 rounded-lg text-red-900 focus:bg-white focus:outline-none"
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => handleRusakBeratChange(e.target.value)}
+                    onBlur={handleRusakBeratBlur}
+                    className="w-full text-xs font-bold px-2 py-1.5 bg-red-50/50 border border-red-300 rounded-lg text-red-900 focus:bg-white focus:outline-none text-center"
                   />
                 </div>
               </div>
