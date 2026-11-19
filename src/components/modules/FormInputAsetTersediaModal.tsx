@@ -238,7 +238,7 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
           ...itemToEdit,
           kode_aset: kodeAsetManual.trim() || itemToEdit.kode_aset,
           nama_barang: namaBarang.trim(),
-          spesifikasi: spesifikasi.trim() || undefined,
+          spesifikasi: spesifikasi.trim() || '',
           kategori: kategori,
           satuan: effectiveSatuan,
           kuantitas_satuan: numJumlah,
@@ -246,7 +246,7 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
           kondisi_baik_pcs: numBaik,
           kondisi_rusak_ringan_pcs: numRusakRingan,
           kondisi_rusak_berat_pcs: numRusakBerat,
-          catatan: catatanSimpel.trim() || itemToEdit.catatan,
+          catatan: catatanSimpel.trim() || itemToEdit.catatan || '',
           last_inspected_at: now.toISOString().split('T')[0],
           last_inspected_by: picName,
           last_inspected_status: (numRusakRingan > 0 || numRusakBerat > 0) ? 'kendala' : 'normal',
@@ -263,7 +263,7 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
               lokasi_asal: currentDapur.nama,
               lokasi_tujuan: currentDapur.nama,
               jumlah_pcs: numJumlah,
-              catatan: catatanSimpel.trim() || undefined
+              catatan: catatanSimpel.trim() || ''
             }
           ]
         };
@@ -288,7 +288,7 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
         dapur_id: currentDapur.id,
         dapur_nama: currentDapur.nama,
         nama_barang: namaBarang.trim(),
-        spesifikasi: spesifikasi.trim() || undefined,
+        spesifikasi: spesifikasi.trim() || '',
         kategori: kategori,
         bulan_tahun_pengadaan: bulanTahun,
         tanggal_pembelian: '', // Akan dilengkapi Tim ERP Desktop
@@ -323,7 +323,7 @@ export const FormInputAsetTersediaModal: React.FC<FormInputAsetTersediaModalProp
             lokasi_asal: currentDapur.nama,
             lokasi_tujuan: currentDapur.nama,
             jumlah_pcs: numJumlah,
-            catatan: catatanSimpel.trim() || undefined
+            catatan: catatanSimpel.trim() || ''
           }
         ]
       };

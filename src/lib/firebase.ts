@@ -44,7 +44,9 @@ export function sanitizeFirestoreData<T extends Record<string, any>>(data: T): P
   const sanitized: any = {};
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
-      if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+      if (Array.isArray(value)) {
+        sanitized[key] = value.map((el) => (el && typeof el === 'object' && !(el instanceof Date) ? sanitizeFirestoreData(el) : el));
+      } else if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
         sanitized[key] = sanitizeFirestoreData(value);
       } else {
         sanitized[key] = value;
